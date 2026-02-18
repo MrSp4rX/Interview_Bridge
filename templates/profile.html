@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-4">👤 Complete Your Professional Profile</h3>
+
+<form method="POST">
+
+  <!-- ================= PERSONAL INFO ================= -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">📌 Personal Information</h5>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label>Phone</label>
+          <input type="text" name="phone" class="form-control" value="{{ user.phone or '' }}">
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label>City</label>
+          <input type="text" name="city" class="form-control" value="{{ user.city or '' }}">
+        </div>
+      </div>
+
+      <label>Career Objective</label>
+      <textarea name="career_objective" class="form-control" rows="3">{{ user.career_objective or '' }}</textarea>
+    </div>
+  </div>
+
+  <!-- ================= EDUCATION ================= -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">🎓 Education</h5>
+
+      <div id="education-section">
+        {% if user.education %}
+        {% for edu in user.education %}
+        <div class="row mb-3 education-entry">
+          <div class="col-md-3">
+            <input type="text" name="degree" class="form-control" value="{{ edu.degree }}">
+          </div>
+          <div class="col-md-3">
+            <input type="text" name="college" class="form-control" value="{{ edu.college }}">
+          </div>
+          <div class="col-md-3">
+            <input type="text" name="year" class="form-control" value="{{ edu.year }}">
+          </div>
+          <div class="col-md-3">
+            <input type="text" name="cgpa" class="form-control" value="{{ edu.cgpa }}">
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="row mb-3 education-entry">
+          <div class="col-md-3">
+            <input type="text" name="degree" class="form-control" placeholder="Degree">
+          </div>
+          <div class="col-md-3">
+            <input type="text" name="college" class="form-control" placeholder="College">
+          </div>
+          <div class="col-md-3">
+            <input type="text" name="year" class="form-control" placeholder="Year">
+          </div>
+          <div class="col-md-3">
+            <input type="text" name="cgpa" class="form-control" placeholder="CGPA">
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <button type="button" class="btn btn-outline-primary btn-sm" onclick="addEducation()">+ Add Another
+        Degree</button>
+    </div>
+  </div>
+
+  <!-- ================= SKILLS ================= -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">💻 Skills</h5>
+
+      <label>Technical Skills</label>
+      <input type="text" name="technical_skills" class="form-control mb-3" value="{{ user.technical_skills or '' }}">
+
+      <label>Soft Skills</label>
+      <input type="text" name="soft_skills" class="form-control" value="{{ user.soft_skills or '' }}">
+    </div>
+  </div>
+
+  <!-- ================= PROJECTS ================= -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">🚀 Projects</h5>
+
+      <div id="project-section">
+        {% if user.projects %}
+        {% for proj in user.projects %}
+        <input type="text" name="project" class="form-control mb-2" value="{{ proj }}">
+        {% endfor %}
+        {% else %}
+        <input type="text" name="project" class="form-control mb-2" placeholder="Project Title + Description">
+        {% endif %}
+      </div>
+
+      <button type="button" class="btn btn-outline-primary btn-sm" onclick="addProject()">+ Add Another Project</button>
+    </div>
+  </div>
+
+  <!-- ================= CERTIFICATIONS ================= -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">📜 Certifications</h5>
+
+      <div id="cert-section">
+        {% if user.certifications %}
+        {% for cert in user.certifications %}
+        <input type="text" name="certification" class="form-control mb-2" value="{{ cert }}">
+        {% endfor %}
+        {% else %}
+        <input type="text" name="certification" class="form-control mb-2" placeholder="Certification Name">
+        {% endif %}
+      </div>
+
+      <button type="button" class="btn btn-outline-primary btn-sm" onclick="addCert()">+ Add Another
+        Certification</button>
+    </div>
+  </div>
+
+  <!-- ================= ACHIEVEMENTS ================= -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">🏆 Achievements</h5>
+
+      <div id="achievement-section">
+        {% if user.achievements %}
+        {% for ach in user.achievements %}
+        <input type="text" name="achievement" class="form-control mb-2" value="{{ ach }}">
+        {% endfor %}
+        {% else %}
+        <input type="text" name="achievement" class="form-control mb-2" placeholder="Achievement">
+        {% endif %}
+      </div>
+
+      <button type="button" class="btn btn-outline-primary btn-sm" onclick="addAchievement()">+ Add Achievement</button>
+    </div>
+  </div>
+
+  <button class="btn btn-primary w-100 mb-4">
+    Save Professional Profile
+  </button>
+
+</form>
+
+<!-- ================= BILLING SECTION RESTORED ================= -->
+<div class="card shadow-sm mb-5">
+  <div class="card-body">
+
+    <h5 class="fw-bold mb-3">💳 Billing & Subscription</h5>
+
+    <p>
+      <strong>Current Plan:</strong>
+      {% if user.subscription == "premium" %}
+      <span class="badge bg-warning text-dark">Premium</span>
+      {% else %}
+      <span class="badge bg-info text-dark">Free</span>
+      {% endif %}
+    </p>
+
+    {% if user.subscription == "free" %}
+
+    <div class="alert alert-warning">
+      Upgrade to unlock:
+      <ul class="mb-0 mt-2">
+        <li>Unlimited Mock Interviews</li>
+        <li>Advanced AI Evaluation</li>
+        <li>Technical Deep Analysis</li>
+        <li>PDF Performance Reports</li>
+      </ul>
+    </div>
+
+    <a href="/upgrade" class="btn btn-warning">
+      Upgrade to Premium 🚀
+    </a>
+
+    {% else %}
+
+    <div class="alert alert-success">
+      You are a Premium member. All features unlocked.
+    </div>
+
+    <form action="/cancel-subscription" method="POST">
+      <button type="submit" class="btn btn-outline-danger">
+        Cancel Subscription
+      </button>
+    </form>
+
+
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

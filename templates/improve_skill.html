@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-4">🚀 Improve Your Technical Skills</h3>
+
+<!-- ================= LANGUAGE SELECTION ================= -->
+<form method="POST" class="mb-4">
+  <div class="row">
+    <div class="col-md-6">
+      <select name="language" class="form-select" required>
+        <option value="">Select Programming Language</option>
+        <option value="Python">Python</option>
+        <option value="Java">Java</option>
+        <option value="JavaScript">JavaScript</option>
+        <option value="C++">C++</option>
+        <option value="SQL">SQL</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-primary">
+        Generate Quiz
+      </button>
+    </div>
+  </div>
+</form>
+
+<!-- ================= QUIZ DISPLAY ================= -->
+{% if questions %}
+<form method="POST">
+
+  <input type="hidden" name="submit_quiz" value="1">
+  <input type="hidden" name="total_questions" value="{{ questions|length }}">
+
+  {% for question in questions %}
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+
+      <h6 class="fw-bold">
+        Q{{ loop.index }}. {{ question.question }}
+      </h6>
+
+      {% set q_index = loop.index0 %}
+
+      {% for option in question.options %}
+      <div class="form-check">
+        <input class="form-check-input"
+               type="radio"
+               name="user_answer_{{ q_index }}"
+               value="{{ ['A','B','C','D'][loop.index0] }}"
+               required>
+
+        <label class="form-check-label">
+          {{ ['A','B','C','D'][loop.index0] }}. {{ option }}
+        </label>
+      </div>
+      {% endfor %}
+
+      <!-- Store correct answer -->
+      <input type="hidden"
+             name="correct_answer_{{ q_index }}"
+             value="{{ question.answer }}">
+
+    </div>
+  </div>
+  {% endfor %}
+
+  <button class="btn btn-success w-100">
+    Submit Quiz
+  </button>
+
+</form>
+{% endif %}
+
+{% if score is not none %}
+<div class="alert alert-success mt-4 text-center">
+  🎯 Your Score: <strong>{{ score }}%</strong>
+</div>
+{% endif %}
+
+{% endblock %}

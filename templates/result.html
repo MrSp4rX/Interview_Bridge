@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>AI Feedback</h2>
+
+<h3>Corrected Version</h3>
+<p>{{ corrected }}</p>
+
+<h3>Feedback</h3>
+<p>{{ feedback }}</p>
+
+<h3>Confidence Score</h3>
+<p>{{ score }}/100</p>
+
+<a href="/dashboard">Back to Dashboard</a>
+
+{% endblock %}

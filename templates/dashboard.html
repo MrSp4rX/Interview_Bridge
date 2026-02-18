@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row">
+  <div class="col-lg-12">
+
+    <!-- Interview Type -->
+    <div class="mb-4 text-center">
+      <a href="/dashboard?type=hr"
+        class="btn {% if interview_type == 'hr' %}btn-primary{% else %}btn-outline-primary{% endif %} me-2">
+        HR Interview
+      </a>
+
+      <a href="/dashboard?type=technical"
+        class="btn {% if interview_type == 'technical' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        Technical Interview
+      </a>
+    </div>
+
+    <!-- Limit Warning -->
+    {% if limit_reached %}
+    <div class="alert alert-danger text-center">
+      🚫 Weekly free limit reached ({{ free_limit }} sessions).
+      <a href="/upgrade" class="fw-bold">Upgrade to Premium</a> for unlimited access.
+    </div>
+    {% endif %}
+
+    <!-- Practice Card -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+
+        <h5 class="fw-bold mb-3">
+          🎤 {{ interview_type|capitalize }} Interview Practice
+        </h5>
+
+        <div class="alert alert-info">
+          <strong>Question:</strong> {{ question }}
+        </div>
+
+        <form method="POST">
+          <input type="hidden" name="question" value="{{ question }}">
+          <input type="hidden" name="interview_type" value="{{ interview_type }}">
+
+          <textarea name="answer" class="form-control mb-3" rows="4" placeholder="Type your answer..."
+            required></textarea>
+
+          <button class="btn btn-success w-100" {% if limit_reached %}disabled{% endif %}>
+            Analyze Answer
+          </button>
+        </form>
+
+      </div>
+    </div>
+
+    <!-- AI Feedback -->
+    {% if feedback %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+
+        <h5 class="fw-bold text-success mb-3">🧠 Advanced AI Evaluation</h5>
+
+        <div class="row text-center mb-3">
+
+          <div class="col-md-4">
+            <h6>Grammar</h6>
+            <span class="badge bg-info fs-6">
+              {{ feedback.grammar_score }}/10
+            </span>
+          </div>
+
+          <div class="col-md-4">
+            <h6>Confidence</h6>
+            <span class="badge bg-primary fs-6">
+              {{ feedback.confidence_score }}/10
+            </span>
+          </div>
+
+          {% if interview_type == "technical" %}
+          <div class="col-md-4">
+            <h6>Technical Depth</h6>
+            {% if feedback.technical_score %}
+            <span class="badge bg-warning text-dark fs-6">
+              {{ feedback.technical_score }}/10
+            </span>
+            {% else %}
+            <span class="badge bg-secondary">
+              Premium Feature
+            </span>
+            {% endif %}
+          </div>
+          {% endif %}
+
+        </div>
+
+        <hr>
+
+        <p class="fw-semibold">Improved Professional Answer:</p>
+        <p class="text-muted">{{ feedback.improved_answer }}</p>
+
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Readiness -->
+    {% if scores %}
+    <div class="alert alert-success text-center">
+      🎯 Interview Readiness Score:
+      <strong>{{ readiness }}%</strong>
+    </div>
+    {% endif %}
+
+    <!-- Recent Interviews -->
+    {% if recent_interviews %}
+    <div class="card shadow-sm mt-4">
+      <div class="card-body">
+
+        <!-- Header Row -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+          <!-- LEFT SIDE -->
+          <div class="d-flex gap-2 align-items-center">
+
+            <h5 class="fw-bold mb-0">🕘 Recent Interviews</h5>
+
+          </div>
+
+          <!-- RIGHT SIDE -->
+          <div>
+            {% if user.subscription == "premium" %}
+            <a href="/download-report" class="btn btn-outline-success btn-sm">
+              📄 Download Performance Report
+            </a>
+            {% endif %}
+            <a href="/history" class="btn btn-sm btn-outline-primary">
+              View All History
+            </a>
+          </div>
+
+
+        </div>
+
+        <!-- Interview Cards -->
+        {% for interview in recent_interviews %}
+        <div class="mb-3 p-3 bg-light rounded">
+
+          <small class="text-muted">
+            {{ interview.created_at.strftime("%d %b %Y, %I:%M %p") }}
+          </small>
+
+          <p class="mt-2"><strong>Q:</strong> {{ interview.question }}</p>
+
+          <p><strong>Confidence:</strong>
+            {{ interview.feedback.confidence_score }}/10
+          </p>
+
+        </div>
+        {% endfor %}
+
+      </div>
+    </div>
+    {% endif %}
+
+
+    <!-- Confidence Graph -->
+    <div class="card shadow-sm mt-4">
+      <div class="card-body">
+        <h5 class="fw-bold mb-3">📊 Confidence Progress</h5>
+        <canvas id="confidenceChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const scores = {{ scores|default ([]) | tojson | safe }};
+
+  if (scores.length > 0) {
+    new Chart(document.getElementById('confidenceChart'), {
+      type: 'line',
+      data: {
+        labels: scores.map((_, i) => "Session " + (i + 1)),
+        datasets: [{
+          label: 'Confidence Score',
+          data: scores,
+          borderColor: '#4e73df',
+          backgroundColor: 'rgba(78,115,223,0.15)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, max: 10 }
+        }
+      }
+    });
+  }
+</script>
+
+{% endblock %}
