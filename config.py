@@ -6,7 +6,7 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY") or "dev-secret-key-123"
     MONGO_URI = os.getenv("MONGO_URI") or "mongodb://localhost:27017/"
-    DB_NAME = os.getenv("SECRET_KEY")
+    DB_NAME = os.getenv("DB_NAME")
     PEO_API_KEY = os.getenv("PEO_API_KEY")
     PEO_BASE_URL = os.getenv("PEO_BASE_URL")
 

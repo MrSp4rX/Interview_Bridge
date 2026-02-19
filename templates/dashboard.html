@@ -21,15 +21,15 @@
     {% if limit_reached %}
     <div class="alert alert-danger text-center">
       🚫 Weekly free limit reached ({{ free_limit }} sessions).
-      <a href="/upgrade" class="fw-bold">Upgrade to Premium</a> for unlimited access.
+      <a href="/upgrade" class="fw-bold" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">Upgrade to Premium</a> for unlimited access.
     </div>
     {% endif %}
 
     <!-- Practice Card -->
-    <div class="card shadow-sm mb-4">
+    <div class="glass-card p-4 mb-4">
       <div class="card-body">
 
-        <h5 class="fw-bold mb-3">
+        <h5 class="fw-bold mb-3" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
           🎤 {{ interview_type|capitalize }} Interview Practice
         </h5>
 
@@ -54,10 +54,10 @@
 
     <!-- AI Feedback -->
     {% if feedback %}
-    <div class="card shadow-sm mb-4">
+    <div class="glass-card p-4 mb-4">
       <div class="card-body">
 
-        <h5 class="fw-bold text-success mb-3">🧠 Advanced AI Evaluation</h5>
+        <h5 class="fw-bold text-success mb-3" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">🧠 Advanced AI Evaluation</h5>
 
         <div class="row text-center mb-3">
 
@@ -111,7 +111,7 @@
 
     <!-- Recent Interviews -->
     {% if recent_interviews %}
-    <div class="card shadow-sm mt-4">
+    <div class="glass-card p-4 mt-4">
       <div class="card-body">
 
         <!-- Header Row -->
@@ -120,7 +120,7 @@
           <!-- LEFT SIDE -->
           <div class="d-flex gap-2 align-items-center">
 
-            <h5 class="fw-bold mb-0">🕘 Recent Interviews</h5>
+            <h5 class="fw-bold mb-0" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">🕘 Recent Interviews</h5>
 
           </div>
 
@@ -162,9 +162,9 @@
 
 
     <!-- Confidence Graph -->
-    <div class="card shadow-sm mt-4">
+    <div class="glass-card p-4 mt-4">
       <div class="card-body">
-        <h5 class="fw-bold mb-3">📊 Confidence Progress</h5>
+        <h5 class="fw-bold mb-3" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">📊 Confidence Progress</h5>
         <canvas id="confidenceChart"></canvas>
       </div>
     </div>

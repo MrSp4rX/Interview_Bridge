@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h3 class="fw-bold mb-4">🚀 Improve Your Technical Skills</h3>
+<h3 class="fw-bold mb-4" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">🚀 Improve Your Technical Skills</h3>
 
 <!-- ================= LANGUAGE SELECTION ================= -->
 <form method="POST" class="mb-4">
@@ -32,10 +32,10 @@
   <input type="hidden" name="total_questions" value="{{ questions|length }}">
 
   {% for question in questions %}
-  <div class="card shadow-sm mb-3">
+  <div class="glass-card p-4 mb-3">
     <div class="card-body">
 
-      <h6 class="fw-bold">
+      <h6 class="fw-bold" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
         Q{{ loop.index }}. {{ question.question }}
       </h6>
 

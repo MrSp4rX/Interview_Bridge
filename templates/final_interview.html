@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-4"
+    style="background:linear-gradient(90deg,#7f5af0,#00f5ff);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;">
+    📄 Resume-Based AI Interview
+</h3>
+
+<div class="glass-card p-4 mb-4">
+    <div class="card-body">
+
+        <!-- Resume Status -->
+        {% if user.resume %}
+        <div class="alert alert-success mb-3">
+            ✅ Resume Loaded:
+            <strong>{{ user.resume }}</strong>
+        </div>
+        {% else %}
+        <div class="alert alert-danger mb-3">
+            ⚠ No Resume Found.
+            Please upload your resume in Profile section first.
+        </div>
+        {% endif %}
+
+        <!-- Interview Controls -->
+        <form method="GET" class="mb-3">
+            <div class="row g-2">
+
+                <div class="col-md-4">
+                    <select name="mode" class="form-select" onchange="this.form.submit()">
+                        <option value="resume_hr"
+                            {% if interview_mode == "resume_hr" %}selected{% endif %}>
+                            Resume + HR Focus
+                        </option>
+                        <option value="resume_technical"
+                            {% if interview_mode == "resume_technical" %}selected{% endif %}>
+                            Resume + Technical Focus
+                        </option>
+                        <option value="resume_mixed"
+                            {% if interview_mode == "resume_mixed" %}selected{% endif %}>
+                            Resume + Mixed Round
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-secondary w-100">
+                        Refresh
+                    </button>
+                </div>
+
+                <div class="col-md-2">
+                    <a href="{{ url_for('final_interview', reset=1) }}"
+                       class="btn btn-danger w-100">
+                        Start Over
+                    </a>
+                </div>
+
+            </div>
+        </form>
+
+        <hr>
+
+        <!-- Chat Window -->
+        <div class="border rounded p-3 mb-3"
+             style="height:450px; overflow-y:auto; background:#f8f9fa;"
+             id="chatBox">
+
+            {% if chat_history %}
+                {% for msg in chat_history %}
+
+                    {% if msg.role == "ai" %}
+                        <div class="mb-3 text-start">
+                            <div class="p-3 rounded bg-light border">
+                                <strong class="text-primary">AI Interviewer:</strong>
+                                <div>{{ msg.content }}</div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="mb-3 text-end">
+                            <div class="p-3 rounded bg-success text-white">
+                                <strong>You:</strong>
+                                <div>{{ msg.content }}</div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                {% endfor %}
+            {% else %}
+                <div class="text-muted">
+                    🤖 AI Interviewer:
+                    I have analyzed your resume. Let’s begin.
+                    Can you briefly introduce yourself?
+                </div>
+            {% endif %}
+
+        </div>
+
+        <!-- User Input -->
+        <form method="POST">
+            <input type="hidden" name="mode" value="{{ interview_mode }}">
+
+            <div class="input-group">
+                <input type="text"
+                       id="user_input"
+                       name="user_message"
+                       class="form-control"
+                       placeholder="Type your answer..."
+                       required
+                       autocomplete="off">
+                <button class="btn btn-success">Send</button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<script>
+    const chatBox = document.getElementById("chatBox");
+    chatBox.scrollTop = chatBox.scrollHeight;
+</script>
+
+{% endblock %}

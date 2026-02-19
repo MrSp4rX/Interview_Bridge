@@ -3,200 +3,237 @@
 
 <h3 class="fw-bold mb-4">👤 Complete Your Professional Profile</h3>
 
-<form method="POST">
+<form method="POST" enctype="multipart/form-data">
 
-  <!-- ================= PERSONAL INFO ================= -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-body">
-      <h5 class="fw-bold mb-3">📌 Personal Information</h5>
+<!-- ================= PROFILE STRENGTH ================= -->
+<div class="glass-card p-4 mb-4 text-center">
+    <h5 class="fw-bold mb-3">📊 Profile Strength</h5>
 
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label>Phone</label>
-          <input type="text" name="phone" class="form-control" value="{{ user.phone or '' }}">
+    <div class="progress mb-3" style="height: 22px;">
+        <div class="progress-bar bg-success"
+             role="progressbar"
+             style="width: {{ profile_strength }}%;">
+            {{ profile_strength }}%
         </div>
-
-        <div class="col-md-6 mb-3">
-          <label>City</label>
-          <input type="text" name="city" class="form-control" value="{{ user.city or '' }}">
-        </div>
-      </div>
-
-      <label>Career Objective</label>
-      <textarea name="career_objective" class="form-control" rows="3">{{ user.career_objective or '' }}</textarea>
     </div>
-  </div>
 
-  <!-- ================= EDUCATION ================= -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-body">
-      <h5 class="fw-bold mb-3">🎓 Education</h5>
+    <small class="text-muted">
+        Complete all sections to unlock 100% strength.
+    </small>
+</div>
 
-      <div id="education-section">
-        {% if user.education %}
-        {% for edu in user.education %}
-        <div class="row mb-3 education-entry">
-          <div class="col-md-3">
-            <input type="text" name="degree" class="form-control" value="{{ edu.degree }}">
-          </div>
-          <div class="col-md-3">
-            <input type="text" name="college" class="form-control" value="{{ edu.college }}">
-          </div>
-          <div class="col-md-3">
-            <input type="text" name="year" class="form-control" value="{{ edu.year }}">
-          </div>
-          <div class="col-md-3">
-            <input type="text" name="cgpa" class="form-control" value="{{ edu.cgpa }}">
-          </div>
-        </div>
-        {% endfor %}
-        {% else %}
-        <div class="row mb-3 education-entry">
-          <div class="col-md-3">
-            <input type="text" name="degree" class="form-control" placeholder="Degree">
-          </div>
-          <div class="col-md-3">
-            <input type="text" name="college" class="form-control" placeholder="College">
-          </div>
-          <div class="col-md-3">
-            <input type="text" name="year" class="form-control" placeholder="Year">
-          </div>
-          <div class="col-md-3">
-            <input type="text" name="cgpa" class="form-control" placeholder="CGPA">
-          </div>
-        </div>
-        {% endif %}
-      </div>
+<!-- ================= PERSONAL INFO ================= -->
+<div class="glass-card p-4 mb-4">
+<h5 class="fw-bold mb-3 text-gradient">📌 Personal Information</h5>
 
-      <button type="button" class="btn btn-outline-primary btn-sm" onclick="addEducation()">+ Add Another
-        Degree</button>
-    </div>
-  </div>
+<div class="row">
+<div class="col-md-6 mb-3">
+<label>Phone *</label>
+<input type="text" name="phone" class="form-control"
+value="{{ user.phone or '' }}" required>
+</div>
 
-  <!-- ================= SKILLS ================= -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-body">
-      <h5 class="fw-bold mb-3">💻 Skills</h5>
+<div class="col-md-6 mb-3">
+<label>City *</label>
+<input type="text" name="city" class="form-control"
+value="{{ user.city or '' }}" required>
+</div>
 
-      <label>Technical Skills</label>
-      <input type="text" name="technical_skills" class="form-control mb-3" value="{{ user.technical_skills or '' }}">
+<div class="col-md-6 mb-3">
+<label>Date of Birth *</label>
+<input type="date" name="dob" class="form-control"
+value="{{ user.dob or '' }}" required>
+</div>
 
-      <label>Soft Skills</label>
-      <input type="text" name="soft_skills" class="form-control" value="{{ user.soft_skills or '' }}">
-    </div>
-  </div>
+<div class="col-md-6 mb-3">
+<label>Gender *</label>
+<select name="gender" class="form-control" required>
+<option value="">Select</option>
+<option value="Male" {% if user.gender=="Male" %}selected{% endif %}>Male</option>
+<option value="Female" {% if user.gender=="Female" %}selected{% endif %}>Female</option>
+<option value="Other" {% if user.gender=="Other" %}selected{% endif %}>Other</option>
+</select>
+</div>
 
-  <!-- ================= PROJECTS ================= -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-body">
-      <h5 class="fw-bold mb-3">🚀 Projects</h5>
+<div class="col-12 mb-3">
+<label>Full Address *</label>
+<textarea name="address" class="form-control" rows="2" required>{{ user.address or '' }}</textarea>
+</div>
+</div>
 
-      <div id="project-section">
-        {% if user.projects %}
-        {% for proj in user.projects %}
-        <input type="text" name="project" class="form-control mb-2" value="{{ proj }}">
-        {% endfor %}
-        {% else %}
-        <input type="text" name="project" class="form-control mb-2" placeholder="Project Title + Description">
-        {% endif %}
-      </div>
+<label>Career Objective *</label>
+<textarea name="career_objective" class="form-control"
+rows="3" required>{{ user.career_objective or '' }}</textarea>
+</div>
 
-      <button type="button" class="btn btn-outline-primary btn-sm" onclick="addProject()">+ Add Another Project</button>
-    </div>
-  </div>
+<!-- ================= PROFESSIONAL DETAILS ================= -->
+<div class="glass-card p-4 mb-4">
+<h5 class="fw-bold mb-3 text-gradient">🧾 Professional Details</h5>
 
-  <!-- ================= CERTIFICATIONS ================= -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-body">
-      <h5 class="fw-bold mb-3">📜 Certifications</h5>
+<div class="row">
+<div class="col-md-6 mb-3">
+<label>LinkedIn</label>
+<input type="text" name="linkedin" class="form-control"
+value="{{ user.linkedin or '' }}">
+</div>
 
-      <div id="cert-section">
-        {% if user.certifications %}
-        {% for cert in user.certifications %}
-        <input type="text" name="certification" class="form-control mb-2" value="{{ cert }}">
-        {% endfor %}
-        {% else %}
-        <input type="text" name="certification" class="form-control mb-2" placeholder="Certification Name">
-        {% endif %}
-      </div>
+<div class="col-md-6 mb-3">
+<label>GitHub</label>
+<input type="text" name="github" class="form-control"
+value="{{ user.github or '' }}">
+</div>
 
-      <button type="button" class="btn btn-outline-primary btn-sm" onclick="addCert()">+ Add Another
-        Certification</button>
-    </div>
-  </div>
+<div class="col-md-6 mb-3">
+<label>Portfolio</label>
+<input type="text" name="portfolio" class="form-control"
+value="{{ user.portfolio or '' }}">
+</div>
 
-  <!-- ================= ACHIEVEMENTS ================= -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-body">
-      <h5 class="fw-bold mb-3">🏆 Achievements</h5>
+<div class="col-md-6 mb-3">
+<label>Preferred Role *</label>
+<input type="text" name="preferred_role" class="form-control"
+value="{{ user.preferred_role or '' }}" required>
+</div>
 
-      <div id="achievement-section">
-        {% if user.achievements %}
-        {% for ach in user.achievements %}
-        <input type="text" name="achievement" class="form-control mb-2" value="{{ ach }}">
-        {% endfor %}
-        {% else %}
-        <input type="text" name="achievement" class="form-control mb-2" placeholder="Achievement">
-        {% endif %}
-      </div>
+<div class="col-md-6 mb-3">
+<label>Years of Experience *</label>
+<input type="number" name="experience" class="form-control"
+value="{{ user.experience or '' }}" required>
+</div>
 
-      <button type="button" class="btn btn-outline-primary btn-sm" onclick="addAchievement()">+ Add Achievement</button>
-    </div>
-  </div>
+<div class="col-md-6 mb-3">
+<label>Current Status *</label>
+<select name="current_status" class="form-control" required>
+<option value="">Select</option>
+<option value="Student" {% if user.current_status=="Student" %}selected{% endif %}>Student</option>
+<option value="Fresher" {% if user.current_status=="Fresher" %}selected{% endif %}>Fresher</option>
+<option value="Working Professional" {% if user.current_status=="Working Professional" %}selected{% endif %}>Working Professional</option>
+</select>
+</div>
+</div>
+</div>
 
-  <button class="btn btn-primary w-100 mb-4">
-    Save Professional Profile
-  </button>
+<!-- ================= WORK EXPERIENCE ================= -->
+<div class="glass-card p-4 mb-4">
+<h5 class="fw-bold mb-3 text-gradient">💼 Work Experience</h5>
+
+<div id="experience-section">
+{% if user.experience_details %}
+{% for exp in user.experience_details %}
+<div class="mb-3">
+<input type="text" name="company" class="form-control mb-2"
+value="{{ exp.company }}" placeholder="Company">
+<input type="text" name="role" class="form-control mb-2"
+value="{{ exp.role }}" placeholder="Role">
+<textarea name="exp_description" class="form-control"
+placeholder="Description">{{ exp.description }}</textarea>
+</div>
+{% endfor %}
+{% else %}
+<div class="mb-3">
+<input type="text" name="company" class="form-control mb-2" placeholder="Company">
+<input type="text" name="role" class="form-control mb-2" placeholder="Role">
+<textarea name="exp_description" class="form-control" placeholder="Description"></textarea>
+</div>
+{% endif %}
+</div>
+
+<button type="button" class="btn btn-outline-primary btn-sm"
+onclick="addExperience()">+ Add Experience</button>
+</div>
+
+<!-- ================= PROJECTS ================= -->
+<div class="glass-card p-4 mb-4">
+<h5 class="fw-bold mb-3 text-gradient">🚀 Projects</h5>
+
+<div id="project-section">
+{% if user.projects %}
+{% for proj in user.projects %}
+<input type="text" name="project"
+class="form-control mb-2"
+value="{{ proj }}">
+{% endfor %}
+{% else %}
+<input type="text" name="project"
+class="form-control mb-2"
+placeholder="Project Title + Tech Used">
+{% endif %}
+</div>
+
+<button type="button" class="btn btn-outline-primary btn-sm"
+onclick="addProject()">+ Add Project</button>
+</div>
+
+<!-- ================= CERTIFICATIONS ================= -->
+<div class="glass-card p-4 mb-4">
+<h5 class="fw-bold mb-3 text-gradient">📜 Certifications</h5>
+
+<div id="cert-section">
+{% if user.certifications %}
+{% for cert in user.certifications %}
+<input type="text" name="certification"
+class="form-control mb-2"
+value="{{ cert }}">
+{% endfor %}
+{% else %}
+<input type="text" name="certification"
+class="form-control mb-2"
+placeholder="Certification Name">
+{% endif %}
+</div>
+
+<button type="button" class="btn btn-outline-primary btn-sm"
+onclick="addCert()">+ Add Certification</button>
+</div>
+
+<!-- ================= ACHIEVEMENTS ================= -->
+<div class="glass-card p-4 mb-4">
+<h5 class="fw-bold mb-3 text-gradient">🏆 Achievements</h5>
+
+<div id="achievement-section">
+{% if user.achievements %}
+{% for ach in user.achievements %}
+<input type="text" name="achievement"
+class="form-control mb-2"
+value="{{ ach }}">
+{% endfor %}
+{% else %}
+<input type="text" name="achievement"
+class="form-control mb-2"
+placeholder="Achievement">
+{% endif %}
+</div>
+
+<button type="button" class="btn btn-outline-primary btn-sm"
+onclick="addAchievement()">+ Add Achievement</button>
+</div>
+
+<!-- ================= RESUME ================= -->
+<div class="glass-card p-4 mb-4">
+<h5 class="fw-bold mb-3 text-gradient">📄 Resume Upload</h5>
+
+{% if user.resume %}
+<div class="alert alert-success">
+Resume Uploaded: <strong>{{ user.resume }}</strong>
+</div>
+<a href="{{ url_for('download_resume') }}"
+class="btn btn-outline-primary btn-sm mb-3">
+Download Resume
+</a>
+<label>Replace Resume (PDF)</label>
+<input type="file" name="resume"
+class="form-control" accept=".pdf">
+{% else %}
+<div class="alert alert-warning">No resume uploaded yet.</div>
+<input type="file" name="resume"
+class="form-control" accept=".pdf">
+{% endif %}
+</div>
+
+<button class="btn btn-primary w-100 mb-5">
+💾 Save Professional Profile
+</button>
 
 </form>
-
-<!-- ================= BILLING SECTION RESTORED ================= -->
-<div class="card shadow-sm mb-5">
-  <div class="card-body">
-
-    <h5 class="fw-bold mb-3">💳 Billing & Subscription</h5>
-
-    <p>
-      <strong>Current Plan:</strong>
-      {% if user.subscription == "premium" %}
-      <span class="badge bg-warning text-dark">Premium</span>
-      {% else %}
-      <span class="badge bg-info text-dark">Free</span>
-      {% endif %}
-    </p>
-
-    {% if user.subscription == "free" %}
-
-    <div class="alert alert-warning">
-      Upgrade to unlock:
-      <ul class="mb-0 mt-2">
-        <li>Unlimited Mock Interviews</li>
-        <li>Advanced AI Evaluation</li>
-        <li>Technical Deep Analysis</li>
-        <li>PDF Performance Reports</li>
-      </ul>
-    </div>
-
-    <a href="/upgrade" class="btn btn-warning">
-      Upgrade to Premium 🚀
-    </a>
-
-    {% else %}
-
-    <div class="alert alert-success">
-      You are a Premium member. All features unlocked.
-    </div>
-
-    <form action="/cancel-subscription" method="POST">
-      <button type="submit" class="btn btn-outline-danger">
-        Cancel Subscription
-      </button>
-    </form>
-
-
-    {% endif %}
-
-  </div>
-</div>
 
 {% endblock %}

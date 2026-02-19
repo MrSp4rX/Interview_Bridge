@@ -3,14 +3,16 @@ from flask import Flask, render_template, request, session
 from flask_login import login_required, current_user
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
+from werkzeug.utils import secure_filename
 from flask_bcrypt import Bcrypt
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from config import Config
-from services.ai_engine import generate_feedback, extract_json
+from services.ai_engine import generate_feedback
 import random
 import os
 import whisper
+import json
 from datetime import datetime, timedelta, timezone
 from itsdangerous import URLSafeTimedSerializer
 import smtplib
@@ -18,23 +20,20 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
 from datetime import datetime, timedelta
-from services.pdf_generator import generate_pdf_report
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 import io
+from functools import wraps
 from langchain_groq import ChatGroq
-from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 load_dotenv()
 
-
-#configure model 
 llm = ChatGroq(
     model="llama-3.1-8b-instant",
     temperature=0.2,
@@ -53,12 +52,11 @@ class QuizSchema(BaseModel):
 
 parser = JsonOutputParser(pydantic_object=QuizSchema)
 
-
-
-
 app = Flask(__name__)
+app.config["UPLOAD_FOLDER"] = "resumes"
 app.config["SECRET_KEY"] = Config.SECRET_KEY
 serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
+ALLOWED_EXTENSIONS = {"pdf"}
 app.config.from_object(Config)
 
 bcrypt = Bcrypt(app)
@@ -79,6 +77,84 @@ QUESTIONS = [
     "Describe a challenge you faced",
     "Explain your final year project"
 ]
+
+def calculate_profile_strength(profile):
+    score = 0
+    total = 100
+
+    # Personal (20)
+    personal = profile.get("personal", {})
+    if all(personal.get(field) for field in ["phone", "city", "dob", "gender", "address"]):
+        score += 20
+
+    # Professional (20)
+    professional = profile.get("professional", {})
+    if all(professional.get(field) for field in ["preferred_role", "career_objective"]):
+        score += 20
+
+    # Skills (15)
+    skills = profile.get("skills", {})
+    if skills.get("technical") and skills.get("soft"):
+        score += 15
+
+    # Education (15)
+    if profile.get("education"):
+        score += 15
+
+    # Projects (10)
+    if profile.get("projects"):
+        score += 10
+
+    # Certifications (5)
+    if profile.get("certifications"):
+        score += 5
+
+    # Resume (15)
+    if profile.get("resume", {}).get("filename"):
+        score += 15
+
+    return score
+
+
+def allowed_file(filename):
+    return "." in filename and \
+        filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.context_processor
+def inject_user_subscription():
+    if current_user.is_authenticated:
+        user = users_collection.find_one(
+            {"_id": ObjectId(current_user.id)}
+        )
+        return {
+            "subscription": user.get("subscription", "free")
+        }
+    return {
+        "subscription": None
+    }
+
+
+@app.context_processor
+def inject_user():
+    if current_user.is_authenticated:
+        user = users_collection.find_one(
+            {"_id": ObjectId(current_user.id)}
+        )
+        return dict(user=user)
+    return dict(user=None)
+
+def premium_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = users_collection.find_one(
+            {"_id": ObjectId(current_user.id)}
+        )
+
+        if not user or user.get("subscription") != "premium":
+            return redirect("/usage")
+
+        return f(*args, **kwargs)
+    return decorated_function
 
 def generate_reset_token(email):
     serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
@@ -256,6 +332,7 @@ def reset_password(token):
 
 
 @app.route("/transcribe", methods=["POST"])
+@premium_required
 @login_required
 def transcribe_audio():
 
@@ -284,14 +361,38 @@ def transcribe_audio():
 @login_required
 def profile():
 
-    user = users_collection.find_one(
-        {"_id": ObjectId(current_user.id)}
-    )
+    user = users_collection.find_one({"_id": ObjectId(current_user.id)})
 
     if not user:
         return redirect("/dashboard")
 
     if request.method == "POST":
+
+        # ================= PERSONAL =================
+        personal = {
+            "phone": request.form.get("phone", "").strip(),
+            "city": request.form.get("city", "").strip(),
+            "dob": request.form.get("dob", "").strip(),
+            "gender": request.form.get("gender", "").strip(),
+            "address": request.form.get("address", "").strip(),
+        }
+
+        # ================= PROFESSIONAL =================
+        professional = {
+            "preferred_role": request.form.get("preferred_role", "").strip(),
+            "experience_years": request.form.get("experience", "").strip(),
+            "current_status": request.form.get("current_status", "").strip(),
+            "career_objective": request.form.get("career_objective", "").strip(),
+            "linkedin": request.form.get("linkedin", "").strip(),
+            "github": request.form.get("github", "").strip(),
+            "portfolio": request.form.get("portfolio", "").strip(),
+        }
+
+        # ================= SKILLS =================
+        skills = {
+            "technical": request.form.get("technical_skills", "").split(","),
+            "soft": request.form.get("soft_skills", "").split(",")
+        }
 
         # ================= EDUCATION =================
         education = []
@@ -301,49 +402,99 @@ def profile():
         cgpas = request.form.getlist("cgpa")
 
         for i in range(len(degrees)):
-            # Skip completely empty rows
-            if not degrees[i] and not colleges[i]:
-                continue
+            if degrees[i] or colleges[i]:
+                education.append({
+                    "degree": degrees[i],
+                    "college": colleges[i],
+                    "year": years[i],
+                    "cgpa": cgpas[i]
+                })
 
-            education.append({
-                "degree": degrees[i],
-                "college": colleges[i],
-                "year": years[i],
-                "cgpa": cgpas[i]
-            })
+        # ================= PROJECTS =================
+        projects = []
+        titles = request.form.getlist("project_title")
+        descriptions = request.form.getlist("project_description")
 
-        # ================= OTHER MULTI FIELDS =================
-        certifications = [
-            c for c in request.form.getlist("certification") if c.strip()
-        ]
+        for i in range(len(titles)):
+            if titles[i]:
+                projects.append({
+                    "title": titles[i],
+                    "description": descriptions[i],
+                    "tech_stack": [],
+                    "github_link": ""
+                })
 
-        projects = [
-            p for p in request.form.getlist("project") if p.strip()
-        ]
+        # ================= CERTIFICATIONS =================
+        certifications = request.form.getlist("certification")
 
-        achievements = [
-            a for a in request.form.getlist("achievement") if a.strip()
-        ]
+        # ================= RESUME =================
+        resume_file = request.files.get("resume")
+        resume_data = user.get("profile", {}).get("resume", {})
 
-        # ================= UPDATE DATABASE =================
+        if resume_file and resume_file.filename != "":
+            if allowed_file(resume_file.filename):
+
+                filename = secure_filename(f"{current_user.id}_resume.pdf")
+                path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                resume_file.save(path)
+
+                resume_data = {
+                    "filename": filename,
+                    "uploaded_at": datetime.utcnow()
+                }
+
+        # ================= PROFILE OBJECT =================
+        profile_data = {
+            "personal": personal,
+            "professional": professional,
+            "skills": skills,
+            "education": education,
+            "projects": projects,
+            "certifications": certifications,
+            "achievements": request.form.getlist("achievement"),
+            "resume": resume_data
+        }
+
+        # Calculate strength
+        profile_data["profile_strength"] = calculate_profile_strength(profile_data)
+
+        # ================= SAVE =================
         users_collection.update_one(
             {"_id": ObjectId(current_user.id)},
-            {"$set": {
-                "phone": request.form.get("phone", "").strip(),
-                "city": request.form.get("city", "").strip(),
-                "career_objective": request.form.get("career_objective", "").strip(),
-                "technical_skills": request.form.get("technical_skills", "").strip(),
-                "soft_skills": request.form.get("soft_skills", "").strip(),
-                "education": education,
-                "certifications": certifications,
-                "projects": projects,
-                "achievements": achievements
-            }}
+            {"$set": {"profile": profile_data}}
         )
 
         return redirect("/profile")
 
-    return render_template("profile.html", user=user)
+    profile_data = user.get("profile", {})
+    profile_strength = profile_data.get("profile_strength", 0)
+
+    return render_template(
+        "profile.html",
+        user=user,
+        profile=profile_data,
+        profile_strength=profile_strength
+    )
+
+
+@app.route("/download-resume")
+@login_required
+def download_resume():
+
+    user = users_collection.find_one(
+        {"_id": ObjectId(current_user.id)}
+    )
+
+    resume_filename = user.get("resume")
+
+    if not resume_filename:
+        return redirect("/profile")
+
+    return send_file(
+        os.path.join(app.config["UPLOAD_FOLDER"], resume_filename),
+        as_attachment=True
+    )
+
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -406,25 +557,17 @@ TECH_QUESTIONS = [
 
 @app.route("/improve-skill", methods=["GET", "POST"])
 @login_required
+@premium_required
 def improve_skill():
-
     user = users_collection.find_one(
         {"_id": ObjectId(current_user.id)}
     )
-
-    if user.get("subscription") != "premium":
-        return redirect("/upgrade")
-
     questions = None
     score = None
 
     if request.method == "POST":
-
-        # ================= Generate Quiz =================
         if "language" in request.form:
-
             language = request.form.get("language")
-
             prompt = f"""
 Generate 10 multiple choice questions for {language}.
 
@@ -449,15 +592,10 @@ Rules:
 
             try:
                 response = llm.invoke(prompt)
-
                 response_text = response.content.strip()
-
-                #  Remove markdown if model adds it
                 response_text = response_text.replace("```json", "")
                 response_text = response_text.replace("```", "")
                 response_text = response_text.strip()
-
-                import json
                 data = json.loads(response_text)
 
                 questions = data.get("questions", [])
@@ -486,10 +624,6 @@ Rules:
         questions=questions,
         score=score
     )
-
-
-
-
 
 @app.route("/dashboard", methods=["GET", "POST"])
 @login_required
@@ -597,12 +731,17 @@ def dashboard():
 
     recent_interviews = interviews[:3]
 
-    scores = [
-        item.get("feedback", {}).get("confidence_score", 0)
-        for item in interviews
-    ]
+    scores = []
 
-    avg_confidence = sum(scores) / len(scores) if scores else 0
+    for interview in interviews:
+        confidence = interview.get("confidence")
+        if isinstance(confidence, (int, float)):
+            scores.append(confidence)
+
+    avg_confidence = round(
+        sum(scores) / len(scores), 2
+    ) if scores else 0
+
     readiness = round((avg_confidence / 10) * 100, 1)
 
     return render_template(
@@ -620,13 +759,16 @@ def dashboard():
         subscription=subscription
     )
 
-
+@app.route("/final-interview", methods=["GET", "POST"])
+@login_required
+@premium_required
+def final_interview():
+    return render_template("final_interview.html")
 
 
 @app.route("/history")
 @login_required
 def history():
-
     interviews = list(
         interviews_collection.find(
             {"user_id": current_user.id}
@@ -640,14 +782,9 @@ def history():
 
 @app.route("/download-report")
 @login_required
+@premium_required
 def download_report():
-
     user = users_collection.find_one({"_id": ObjectId(current_user.id)})
-
-    # Allow only premium users
-    if user.get("subscription") != "premium":
-        return redirect("/usage")
-
     interviews = list(
         interviews_collection.find(
             {"user_id": current_user.id}
@@ -656,8 +793,6 @@ def download_report():
 
     if not interviews:
         return "No interviews found."
-
-    # Create PDF in memory
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
     elements = []
@@ -700,7 +835,7 @@ def download_report():
         mimetype="application/pdf"
     )
 
-@app.route("/cancel-subscription", methods=["POST"])
+@app.route("/cancel-subscription", methods=["POST", "GET"])
 @login_required
 def cancel_subscription():
 
@@ -708,20 +843,11 @@ def cancel_subscription():
         {"_id": ObjectId(current_user.id)},
         {"$set": {"subscription": "free"}}
     )
-
     return redirect("/profile")
-
-
-
-
-@app.route("/interview")
-@login_required
-def interview():
-    question = random.choice(QUESTIONS)
-    return render_template("interview.html", question=question)
 
 @app.route("/submit_answer", methods=["POST"])
 @login_required
+@premium_required
 def submit_answer():
     answer = request.form["answer"]
     question = request.form["question"]
@@ -804,6 +930,7 @@ Rules:
 # ---------------- Route ----------------
 @app.route("/chat-interview", methods=["GET", "POST"])
 @login_required
+@premium_required
 def chat_interview():
     interview_type = request.args.get("type", "hr")
     reset = request.args.get("reset", None)
@@ -865,6 +992,7 @@ def chat_interview():
 # ------------------- Voice Interview Page -------------------
 @app.route("/voice-interview")
 @login_required
+@premium_required
 def voice_interview():
     # Initialize session chat history if not exists
     if "voice_chat_history" not in session:
@@ -877,6 +1005,7 @@ def voice_interview():
 # ------------------- AI Response Endpoint -------------------
 @app.route("/voice-interview", methods=["POST"])
 @login_required
+@premium_required
 def voice_interview_post():
     user_text = request.json.get("user_text", "").strip()
     if not user_text:
