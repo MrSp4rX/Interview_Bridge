@@ -39,6 +39,10 @@
             border-bottom: 2px solid white;
         }
 
+        .dropdown-menu {
+            border-radius: 10px;
+        }
+
         /* Dark Mode */
         .dark-mode {
             background-color: #0f172a !important;
@@ -102,12 +106,38 @@
                 </a>
             </li>
 
-            <!-- NEW: Improve Skills -->
+            <!-- Improve Skills -->
             <li class="nav-item">
                 <a class="nav-link {% if request.path.startswith('/improve-skill') %}active{% endif %}"
                    href="/improve-skill">
                     Improve Skills
                 </a>
+            </li>
+
+            <!-- NEW: Mock Interview Dropdown -->
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle 
+                   {% if request.path.startswith('/chat-interview') or request.path.startswith('/voice-interview') %}active{% endif %}"
+                   href="#"
+                   id="mockDropdown"
+                   role="button"
+                   data-bs-toggle="dropdown"
+                   aria-expanded="false">
+                    Mock Interview
+                </a>
+
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item" href="/chat-interview">
+                            💬 Chat Interview
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="/voice-interview">
+                            🎙 Voice Interview
+                        </a>
+                    </li>
+                </ul>
             </li>
 
         </ul>

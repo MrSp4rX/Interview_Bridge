@@ -743,6 +743,16 @@ def usage():
         subscription=user_data.get("subscription", "free")
     )
 
+@app.route("/chat-interview")
+@login_required
+def chat_interview():
+    return render_template("chat_interview.html")
+
+
+@app.route("/voice-interview")
+@login_required
+def voice_interview():
+    return render_template("voice_interview.html")
 
 
 @app.route("/upgrade")

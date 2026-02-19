@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-4">🎙️ AI Voice Mock Interview</h3>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+
+        <div class="alert alert-info">
+            Click "Start Recording" and answer the question verbally.
+        </div>
+
+        <!-- Current Question -->
+        <div class="mb-3">
+            <strong>AI Interviewer:</strong>
+            <p class="mt-2">
+                {{ question or "Tell me about yourself." }}
+            </p>
+        </div>
+
+        <!-- Voice Controls -->
+        <div class="mb-3">
+            <button onclick="startRecording()" class="btn btn-primary me-2">
+                🎤 Start Recording
+            </button>
+
+            <button onclick="stopRecording()" class="btn btn-danger">
+                ⏹ Stop
+            </button>
+        </div>
+
+        <!-- Transcript Area -->
+        <form method="POST">
+            <textarea name="transcript"
+                      id="transcript"
+                      class="form-control mb-3"
+                      rows="5"
+                      placeholder="Your voice transcript will appear here..."
+                      required></textarea>
+
+            <button class="btn btn-success w-100">
+                Submit Answer
+            </button>
+        </form>
+
+    </div>
+</div>
+
+<script>
+let recognition;
+
+function startRecording() {
+    recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+
+    recognition.onresult = function(event) {
+        document.getElementById("transcript").value =
+            event.results[0][0].transcript;
+    };
+
+    recognition.start();
+}
+
+function stopRecording() {
+    if (recognition) {
+        recognition.stop();
+    }
+}
+</script>
+
+{% endblock %}
