@@ -3,67 +3,110 @@
 
 <div class="container py-5">
 
-    <h3 class="fw-bold mb-4" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">📊 Usage & Membership</h3>
+    <h3 class="fw-bold mb-4 text-gradient">
+        Usage & Membership
+    </h3>
 
-    <!-- Weekly Usage Card -->
+    <!-- ================= FREE USER VIEW ================= -->
+    {% if subscription == "free" %}
+
     <div class="glass-card p-4 mb-4">
-        <div class="card-body">
 
-            <h5 class="fw-semibold mb-3">Weekly Usage</h5>
-
-            <p>
-                <strong>Total Practice Sessions:</strong>
-                {{ weekly_sessions }} / {{ free_limit }}
-            </p>
-
-            <div class="progress mb-3" style="height: 20px;">
-                <div class="progress-bar bg-primary"
-                     role="progressbar"
-                     style="width: {{ progress_percent }}%;">
-                    {{ progress_percent|round(0) }}%
-                </div>
-            </div>
-
-            <p>
-                <strong>Remaining Free Sessions:</strong>
-                {{ remaining }}
-            </p>
-
-            {% if remaining == 0 and subscription == "free" %}
-            <div class="alert alert-danger mt-3">
-                ⚠ Weekly free limit reached. Upgrade to continue practicing.
-            </div>
-            {% endif %}
-
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-semibold mb-0">Weekly Interview Quota</h5>
+            <span class="badge bg-secondary">Free Plan</span>
         </div>
+
+        <p class="mb-2">
+            <strong>Sessions Used:</strong>
+            {{ weekly_sessions }} / {{ free_limit }}
+        </p>
+
+        <div class="progress mb-3" style="height: 22px;">
+            <div class="progress-bar 
+                {% if remaining == 0 %}bg-danger
+                {% elif remaining <= 5 %}bg-warning
+                {% else %}bg-primary
+                {% endif %}"
+                role="progressbar"
+                style="width: {{ progress_percent }}%;">
+                {{ progress_percent|round(0) }}%
+            </div>
+        </div>
+
+        <p>
+            <strong>Remaining Sessions:</strong>
+            {{ remaining }}
+        </p>
+
+        <div class="alert 
+            {% if remaining == 0 %}alert-danger
+            {% elif remaining <= 5 %}alert-warning
+            {% else %}alert-info
+            {% endif %}">
+            {{ status_message }}
+        </div>
+
+        {% if remaining == 0 %}
+        <a href="/upgrade" class="btn btn-primary mt-3 w-100">
+            Upgrade to Premium
+        </a>
+        {% endif %}
+
     </div>
 
-    <!-- Premium Card -->
-    <div class="glass-card p-4">
-        <div class="card-body">
+    {% endif %}
 
-            <h5 class="fw-bold" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">💎 Premium Plan Includes</h5>
 
-            <ul class="mt-3">
-                <li>✔ Unlimited Mock Interviews</li>
-                <li>✔ Advanced AI Feedback</li>
-                <li>✔ Technical Deep Evaluation</li>
-                <li>✔ PDF Performance Reports</li>
-                <li>✔ HR + Technical Domain Switching</li>
-                <li>✔ Real-Time Whisper Transcription</li>
-            </ul>
+    <!-- ================= PREMIUM USER VIEW ================= -->
+    {% if subscription == "premium" %}
 
-            {% if subscription == "free" %}
-                <a href="/upgrade" class="btn btn-primary mt-3">
-                    Upgrade Now
-                </a>
-            {% else %}
-                <div class="alert alert-success mt-3">
-                    🎉 You are on Premium Plan
-                </div>
-            {% endif %}
+    <div class="glass-card p-4 mb-4 text-center">
 
+        <span class="badge bg-warning text-dark mb-3">
+            PREMIUM MEMBER
+        </span>
+
+        <h4 class="fw-bold mb-3 text-success">
+            You are already a Premium Member
+        </h4>
+
+        <p class="mb-3">
+            {{ status_message }}
+        </p>
+
+        <div class="alert alert-success">
+            Enjoy unlimited mock interviews, advanced AI evaluation,
+            deep technical feedback, and downloadable performance reports.
         </div>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- ================= PREMIUM FEATURES CARD ================= -->
+    <div class="glass-card p-4">
+
+        <h5 class="fw-bold mb-3 text-gradient">
+            Premium Plan Includes
+        </h5>
+
+        <ul class="mt-3">
+            <li>Unlimited Mock Interviews</li>
+            <li>Advanced AI Feedback</li>
+            <li>Technical Depth Evaluation</li>
+            <li>PDF Performance Reports</li>
+            <li>HR + Technical Mode Switching</li>
+            <li>Voice Interview (Whisper AI)</li>
+        </ul>
+
+        {% if subscription == "free" %}
+        <a href="/upgrade" class="btn btn-primary mt-3 w-100">
+            Upgrade Now
+        </a>
+        {% endif %}
+
     </div>
 
 </div>

@@ -11,66 +11,54 @@
 <div class="glass-card p-4 mb-4">
     <div class="card-body">
 
-        <!-- Resume Status -->
-        {% if user.resume %}
-        <div class="alert alert-success mb-3">
-            ✅ Resume Loaded:
-            <strong>{{ user.resume }}</strong>
-        </div>
-        {% else %}
-        <div class="alert alert-danger mb-3">
-            ⚠ No Resume Found.
-            Please upload your resume in Profile section first.
-        </div>
-        {% endif %}
+        <!-- ================= RESUME UPLOAD ================= -->
+        <h5 class="mb-3">Upload Resume to Start Interview</h5>
+        <form method="POST" enctype="multipart/form-data" class="mb-4">
+            <div class="input-group">
+                <input type="file" class="form-control" name="resume" accept=".pdf,.txt" required>
+                <button class="btn btn-primary" type="submit">Upload & Start Interview</button>
+            </div>
+            {% if resume_filename %}
+            <small class="text-success mt-2 d-block">
+                ✅ Current Resume: {{ resume_filename }}
+            </small>
+            {% endif %}
+        </form>
 
-        <!-- Interview Controls -->
+        {% if resume_uploaded %}
+        <!-- ================= INTERVIEW MODE ================= -->
         <form method="GET" class="mb-3">
             <div class="row g-2">
-
                 <div class="col-md-4">
                     <select name="mode" class="form-select" onchange="this.form.submit()">
-                        <option value="resume_hr"
-                            {% if interview_mode == "resume_hr" %}selected{% endif %}>
+                        <option value="resume_hr" {% if interview_mode == "resume_hr" %}selected{% endif %}>
                             Resume + HR Focus
                         </option>
-                        <option value="resume_technical"
-                            {% if interview_mode == "resume_technical" %}selected{% endif %}>
+                        <option value="resume_technical" {% if interview_mode == "resume_technical" %}selected{% endif %}>
                             Resume + Technical Focus
                         </option>
-                        <option value="resume_mixed"
-                            {% if interview_mode == "resume_mixed" %}selected{% endif %}>
+                        <option value="resume_mixed" {% if interview_mode == "resume_mixed" %}selected{% endif %}>
                             Resume + Mixed Round
                         </option>
                     </select>
                 </div>
-
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-secondary w-100">
-                        Refresh
-                    </button>
+                    <button type="submit" class="btn btn-secondary w-100">Refresh</button>
                 </div>
-
                 <div class="col-md-2">
-                    <a href="{{ url_for('final_interview', reset=1) }}"
-                       class="btn btn-danger w-100">
-                        Start Over
-                    </a>
+                    <a href="{{ url_for('final_interview', reset=1) }}" class="btn btn-danger w-100">Start Over</a>
                 </div>
-
             </div>
         </form>
 
         <hr>
 
-        <!-- Chat Window -->
+        <!-- ================= CHAT WINDOW ================= -->
         <div class="border rounded p-3 mb-3"
              style="height:450px; overflow-y:auto; background:#f8f9fa;"
              id="chatBox">
-
             {% if chat_history %}
                 {% for msg in chat_history %}
-
                     {% if msg.role == "ai" %}
                         <div class="mb-3 text-start">
                             <div class="p-3 rounded bg-light border">
@@ -86,7 +74,6 @@
                             </div>
                         </div>
                     {% endif %}
-
                 {% endfor %}
             {% else %}
                 <div class="text-muted">
@@ -95,13 +82,11 @@
                     Can you briefly introduce yourself?
                 </div>
             {% endif %}
-
         </div>
 
-        <!-- User Input -->
-        <form method="POST">
+        <!-- ================= USER INPUT ================= -->
+        <form method="POST" id="chatForm">
             <input type="hidden" name="mode" value="{{ interview_mode }}">
-
             <div class="input-group">
                 <input type="text"
                        id="user_input"
@@ -113,6 +98,7 @@
                 <button class="btn btn-success">Send</button>
             </div>
         </form>
+        {% endif %}
 
     </div>
 </div>
@@ -120,6 +106,15 @@
 <script>
     const chatBox = document.getElementById("chatBox");
     chatBox.scrollTop = chatBox.scrollHeight;
+
+    const chatForm = document.getElementById("chatForm");
+    if (chatForm) {
+        chatForm.addEventListener("submit", function() {
+            setTimeout(() => {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 100);
+        });
+    }
 </script>
 
 {% endblock %}

@@ -31,15 +31,42 @@ from langchain_groq import ChatGroq
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+import uuid
+from flask_login import login_required, current_user
+from bson import ObjectId
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# =================== Models ===================
+embedding_model = HuggingFaceEmbeddings(
+    model_name="BAAI/bge-small-en",
+    model_kwargs={'device': 'cpu'},
+    encode_kwargs={'normalize_embeddings': False}
+)
+
+chat_model = ChatGroq(
+    groq_api_key=GROQ_API_KEY,
+    model="llama-3.1-8b-instant",
+    temperature=0.2,
+    max_tokens=512
+)
+
 
 load_dotenv()
 
 llm = ChatGroq(
     model="llama-3.1-8b-instant",
     temperature=0.2,
-    max_tokens=800,
+    max_tokens=2000,
     max_retries=2
 )
+
+
 
 
 class QuizQuestion(BaseModel):
@@ -56,6 +83,10 @@ app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "resumes"
 app.config["SECRET_KEY"] = Config.SECRET_KEY
 serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
+app.secret_key = "supersecretkey"
+UPLOAD_FOLDER = "resumes"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {"pdf"}
 app.config.from_object(Config)
 
@@ -476,6 +507,20 @@ def profile():
         profile_strength=profile_strength
     )
 
+@app.route("/history")
+@login_required
+def history():
+
+    interviews = list(
+        interviews_collection.find(
+            {"user_id": current_user.id}
+        ).sort("created_at", -1)
+    )
+
+    return render_template(
+        "history.html",
+        interviews=interviews
+    )
 
 @app.route("/download-resume")
 @login_required
@@ -559,17 +604,28 @@ TECH_QUESTIONS = [
 @login_required
 @premium_required
 def improve_skill():
+
     user = users_collection.find_one(
         {"_id": ObjectId(current_user.id)}
     )
+
     questions = None
     score = None
+    selected_language = None
+    selected_difficulty = None
 
     if request.method == "POST":
-        if "language" in request.form:
-            language = request.form.get("language")
+
+        # ================= GENERATE QUIZ =================
+        if "language" in request.form and "submit_quiz" not in request.form:
+
+            selected_language = request.form.get("language")
+            selected_difficulty = request.form.get("difficulty")
+
             prompt = f"""
-Generate 10 multiple choice questions for {language}.
+You are an expert technical interviewer.
+
+Generate 10 {selected_difficulty} level multiple choice questions for {selected_language} Programming Language.
 
 Return ONLY valid JSON in this format:
 
@@ -588,27 +644,31 @@ Rules:
 - No explanation
 - No markdown
 - No extra text
+- Answer must be A, B, C, or D only
 """
 
             try:
                 response = llm.invoke(prompt)
+                print(response)
                 response_text = response.content.strip()
                 response_text = response_text.replace("```json", "")
                 response_text = response_text.replace("```", "")
                 response_text = response_text.strip()
                 data = json.loads(response_text)
-
                 questions = data.get("questions", [])
 
             except Exception as e:
                 print("Groq LLM Error:", str(e))
                 questions = []
 
-        # ================= Submit Quiz =================
+        # ================= SUBMIT QUIZ =================
         elif "submit_quiz" in request.form:
 
             total = int(request.form.get("total_questions", 0))
             correct = 0
+
+            selected_language = request.form.get("language")
+            selected_difficulty = request.form.get("difficulty")
 
             for i in range(total):
                 user_answer = request.form.get(f"user_answer_{i}")
@@ -622,8 +682,11 @@ Rules:
     return render_template(
         "improve_skill.html",
         questions=questions,
-        score=score
+        score=score,
+        selected_language=selected_language,
+        selected_difficulty=selected_difficulty
     )
+
 
 @app.route("/dashboard", methods=["GET", "POST"])
 @login_required
@@ -731,17 +794,12 @@ def dashboard():
 
     recent_interviews = interviews[:3]
 
-    scores = []
+    scores = [
+        item.get("feedback", {}).get("confidence_score", 0)
+        for item in interviews
+    ]
 
-    for interview in interviews:
-        confidence = interview.get("confidence")
-        if isinstance(confidence, (int, float)):
-            scores.append(confidence)
-
-    avg_confidence = round(
-        sum(scores) / len(scores), 2
-    ) if scores else 0
-
+    avg_confidence = sum(scores) / len(scores) if scores else 0
     readiness = round((avg_confidence / 10) * 100, 1)
 
     return render_template(
@@ -759,26 +817,235 @@ def dashboard():
         subscription=subscription
     )
 
+user_data = {}
+
+# =================== Helper Functions ===================
+
+def load_resume_document(file_path):
+    if file_path.lower().endswith(".pdf"):
+        loader = PyPDFLoader(file_path)
+        return loader.load()
+    elif file_path.lower().endswith(".txt"):
+        loader = TextLoader(file_path, encoding="utf-8")
+        return loader.load()
+    else:
+        raise ValueError("Unsupported format")
+
+
+def create_resume_vectorstore(user_id, resume_path):
+
+    documents = load_resume_document(resume_path)
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=100
+    )
+    docs = splitter.split_documents(documents)
+
+    # Unique folder per user
+    persist_dir = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        "chroma_store",
+        user_id
+    )
+
+    os.makedirs(persist_dir, exist_ok=True)
+
+    vectorstore = Chroma.from_documents(
+        documents=docs,
+        embedding=embedding_model,
+        persist_directory=persist_dir
+    )
+
+    vectorstore.persist()
+
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+    user_data[user_id] = {
+        "vectorstore": vectorstore,
+        "retriever": retriever,
+        "chat_history": []
+    }
+
+    return retriever
+
+
+def get_current_doc(user_id):
+    return user_data.get(user_id)
+
+
+def rag_interview_response(user_input, user_id, mode="resume_mixed"):
+
+    doc_session = get_current_doc(user_id)
+    if not doc_session:
+        return "⚠ Please upload your resume first."
+
+    retriever = doc_session["retriever"]
+    chat_history = doc_session["chat_history"]
+
+    relevant_docs = retriever.invoke(user_input)
+    context_text = "\n\n".join([d.page_content for d in relevant_docs])
+
+    system_prompt = f"""
+You are a professional AI interviewer.
+
+Use resume context ONLY when relevant.
+Do NOT dump full resume.
+Ask one question at a time.
+Behave like a real interviewer.
+If greeting, greet back and ask first question.
+
+Context:
+{context_text}
+"""
+
+
+    messages = [SystemMessage(content=system_prompt)]
+    messages.extend(chat_history)
+    messages.append(HumanMessage(content=user_input))
+
+    response = chat_model.invoke(messages)
+
+    chat_history.append(HumanMessage(content=user_input))
+    chat_history.append(AIMessage(content=response.content))
+
+    return response.content
+
+
+# =================== Final Interview Route ===================
+
 @app.route("/final-interview", methods=["GET", "POST"])
 @login_required
 @premium_required
 def final_interview():
-    return render_template("final_interview.html")
 
-
-@app.route("/history")
-@login_required
-def history():
-    interviews = list(
-        interviews_collection.find(
-            {"user_id": current_user.id}
-        ).sort("created_at", -1)
+    user = users_collection.find_one(
+        {"_id": ObjectId(current_user.id)}
     )
+
+    interview_mode = request.values.get("mode", "resume_mixed")
+    chat_history = []
+    resume_uploaded = False
+
+    # ================= GET RESUME FROM DATABASE =================
+    profile = user.get("profile", {})
+    resume_data = profile.get("resume", {})
+    resume_filename = resume_data.get("filename")
+
+    if resume_filename:
+        resume_uploaded = True
+
+    # ================= HANDLE RESUME UPLOAD =================
+    if request.method == "POST" and request.files.get("resume"):
+
+        resume_file = request.files["resume"]
+
+        if resume_file and resume_file.filename != "":
+
+            if not allowed_file(resume_file.filename):
+                return "Only PDF files are allowed."
+
+            filename = secure_filename(
+                f"{current_user.id}_resume.pdf"
+            )
+
+            user_folder = os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                "user_resumes"
+            )
+
+            os.makedirs(user_folder, exist_ok=True)
+
+            file_path = os.path.join(user_folder, filename)
+            resume_file.save(file_path)
+
+            # ===== SAVE TO DATABASE =====
+            users_collection.update_one(
+                {"_id": ObjectId(current_user.id)},
+                {
+                    "$set": {
+                        "profile.resume": {
+                            "filename": filename,
+                            "uploaded_at": datetime.utcnow()
+                        }
+                    }
+                }
+            )
+
+            resume_uploaded = True
+            resume_filename = filename
+
+            # ===== CREATE VECTORSTORE =====
+            create_resume_vectorstore(
+                user_id=str(current_user.id),
+                resume_path=file_path
+            )
+
+    # ================= HANDLE CHAT =================
+    elif request.method == "POST" and request.form.get("user_message"):
+
+        if not resume_uploaded:
+            return "Please upload your resume first."
+
+        user_msg = request.form.get("user_message")
+
+        # Ensure vectorstore exists
+        doc_session = get_current_doc(str(current_user.id))
+
+        if not doc_session:
+            # Rebuild from stored resume
+            resume_path = os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                "user_resumes",
+                resume_filename
+            )
+
+            create_resume_vectorstore(
+                user_id=str(current_user.id),
+                resume_path=resume_path
+            )
+
+        ai_reply = rag_interview_response(
+            user_input=user_msg,
+            user_id=str(current_user.id),
+            mode=interview_mode
+        )
+
+        doc_session = get_current_doc(str(current_user.id))
+
+        if doc_session:
+            chat_history = [
+                {
+                    "role": "ai" if isinstance(msg, AIMessage) else "user",
+                    "content": msg.content
+                }
+                for msg in doc_session["chat_history"]
+            ]
+
+    # ================= LOAD EXISTING CHAT =================
+    else:
+        if resume_uploaded:
+            doc_session = get_current_doc(str(current_user.id))
+            if doc_session:
+                chat_history = [
+                    {
+                        "role": "ai" if isinstance(msg, AIMessage) else "user",
+                        "content": msg.content
+                    }
+                    for msg in doc_session["chat_history"]
+                ]
 
     return render_template(
-        "history.html",
-        interviews=interviews
+        "final_interview.html",
+        resume_uploaded=resume_uploaded,
+        resume_filename=resume_filename,
+        interview_mode=interview_mode,
+        chat_history=chat_history
     )
+
+
+
+
 
 @app.route("/download-report")
 @login_required
@@ -885,6 +1152,8 @@ def usage():
         {"_id": ObjectId(current_user.id)}
     )
 
+    subscription = user_data.get("subscription", "free")
+
     one_week_ago = datetime.utcnow() - timedelta(days=7)
 
     weekly_sessions = interviews_collection.count_documents({
@@ -895,8 +1164,18 @@ def usage():
     FREE_LIMIT = 20
 
     remaining = max(FREE_LIMIT - weekly_sessions, 0)
-
     progress_percent = min((weekly_sessions / FREE_LIMIT) * 100, 100)
+
+    # Friendly message logic
+    if subscription == "premium":
+        status_message = "You have unlimited access to all interview features."
+    else:
+        if remaining == 0:
+            status_message = "Your weekly free quota has been exhausted."
+        elif remaining <= 5:
+            status_message = "You're almost at your weekly limit. Consider upgrading."
+        else:
+            status_message = "Keep practicing to improve your confidence."
 
     return render_template(
         "usage.html",
@@ -904,8 +1183,10 @@ def usage():
         free_limit=FREE_LIMIT,
         remaining=remaining,
         progress_percent=progress_percent,
-        subscription=user_data.get("subscription", "free")
+        subscription=subscription,
+        status_message=status_message
     )
+
 
 
 SYSTEM_PROMPT = """

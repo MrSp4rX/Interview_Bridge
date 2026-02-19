@@ -1,28 +1,60 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h3 class="fw-bold mb-4" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">🚀 Improve Your Technical Skills</h3>
+<h3 class="fw-bold mb-4"
+    style="background:linear-gradient(90deg,#7f5af0,#00f5ff);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;">
+    🚀 Improve Your Technical Skills
+</h3>
 
-<!-- ================= LANGUAGE SELECTION ================= -->
+<!-- ================= LANGUAGE + LEVEL SELECTION ================= -->
 <form method="POST" class="mb-4">
-  <div class="row">
-    <div class="col-md-6">
+  <div class="row g-2">
+
+    <!-- Language -->
+    <div class="col-md-4">
       <select name="language" class="form-select" required>
         <option value="">Select Programming Language</option>
         <option value="Python">Python</option>
         <option value="Java">Java</option>
         <option value="JavaScript">JavaScript</option>
-        <option value="C++">C++</option>
-        <option value="SQL">SQL</option>
+        <option value="C++ (plus plus)">C++</option>
+        <option value="structured query language">SQL</option>
+        <option value="C# (sharp)">C#</option>
+        <option value="Rust">Rust</option>
+        <option value="Typescript">Typescript</option>
+        <option value="Bash">Bash</option>
+        <option value="php">Php</option>
+        <option value="Swift">Swift</option>
+        <option value="Kotlin">Kotlin</option>
+        <option value="GD-Script">GD-Script</option>
+        <option value="Lua">Lua</option>
+        <option value="R Language">R</option>
+        <option value="Flutter">Flutter</option>
       </select>
     </div>
-    <div class="col-md-3">
-      <button class="btn btn-primary">
+
+    <!-- Difficulty Level -->
+    <div class="col-md-4">
+      <select name="difficulty" class="form-select" required>
+        <option value="">Select Difficulty Level</option>
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
+
+    <!-- Generate Button -->
+    <div class="col-md-4">
+      <button class="btn btn-primary w-100">
         Generate Quiz
       </button>
     </div>
+
   </div>
 </form>
+
 
 <!-- ================= QUIZ DISPLAY ================= -->
 {% if questions %}
@@ -30,12 +62,17 @@
 
   <input type="hidden" name="submit_quiz" value="1">
   <input type="hidden" name="total_questions" value="{{ questions|length }}">
+  <input type="hidden" name="language" value="{{ selected_language }}">
+  <input type="hidden" name="difficulty" value="{{ selected_difficulty }}">
 
   {% for question in questions %}
   <div class="glass-card p-4 mb-3">
     <div class="card-body">
 
-      <h6 class="fw-bold" style="background:linear-gradient(90deg,#7f5af0,#00f5ff); -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+      <h6 class="fw-bold"
+          style="background:linear-gradient(90deg,#7f5af0,#00f5ff);
+          -webkit-background-clip:text;
+          -webkit-text-fill-color:transparent;">
         Q{{ loop.index }}. {{ question.question }}
       </h6>
 
@@ -70,6 +107,7 @@
 
 </form>
 {% endif %}
+
 
 {% if score is not none %}
 <div class="alert alert-success mt-4 text-center">

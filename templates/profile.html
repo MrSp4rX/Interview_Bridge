@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h3 class="fw-bold mb-4">👤 Complete Your Professional Profile</h3>
+<h3 class="fw-bold mb-4">Complete Your Professional Profile</h3>
 
 <form method="POST" enctype="multipart/form-data">
 
 <!-- ================= PROFILE STRENGTH ================= -->
 <div class="glass-card p-4 mb-4 text-center">
-    <h5 class="fw-bold mb-3">📊 Profile Strength</h5>
+    <h5 class="fw-bold mb-3">Profile Strength</h5>
 
     <div class="progress mb-3" style="height: 22px;">
         <div class="progress-bar bg-success"
@@ -16,224 +16,250 @@
             {{ profile_strength }}%
         </div>
     </div>
-
-    <small class="text-muted">
-        Complete all sections to unlock 100% strength.
-    </small>
 </div>
 
 <!-- ================= PERSONAL INFO ================= -->
 <div class="glass-card p-4 mb-4">
-<h5 class="fw-bold mb-3 text-gradient">📌 Personal Information</h5>
+<h5 class="fw-bold mb-3">Personal Information</h5>
 
 <div class="row">
+
 <div class="col-md-6 mb-3">
-<label>Phone *</label>
+<label>Phone</label>
 <input type="text" name="phone" class="form-control"
-value="{{ user.phone or '' }}" required>
+value="{{ profile.personal.phone if profile.personal else '' }}">
 </div>
 
 <div class="col-md-6 mb-3">
-<label>City *</label>
+<label>City</label>
 <input type="text" name="city" class="form-control"
-value="{{ user.city or '' }}" required>
+value="{{ profile.personal.city if profile.personal else '' }}">
 </div>
 
 <div class="col-md-6 mb-3">
-<label>Date of Birth *</label>
+<label>Date of Birth</label>
 <input type="date" name="dob" class="form-control"
-value="{{ user.dob or '' }}" required>
+value="{{ profile.personal.dob if profile.personal else '' }}">
 </div>
 
 <div class="col-md-6 mb-3">
-<label>Gender *</label>
-<select name="gender" class="form-control" required>
+<label>Gender</label>
+<select name="gender" class="form-control">
 <option value="">Select</option>
-<option value="Male" {% if user.gender=="Male" %}selected{% endif %}>Male</option>
-<option value="Female" {% if user.gender=="Female" %}selected{% endif %}>Female</option>
-<option value="Other" {% if user.gender=="Other" %}selected{% endif %}>Other</option>
+<option value="Male"
+{% if profile.personal and profile.personal.gender == "Male" %}selected{% endif %}>Male</option>
+<option value="Female"
+{% if profile.personal and profile.personal.gender == "Female" %}selected{% endif %}>Female</option>
+<option value="Other"
+{% if profile.personal and profile.personal.gender == "Other" %}selected{% endif %}>Other</option>
 </select>
 </div>
 
 <div class="col-12 mb-3">
-<label>Full Address *</label>
-<textarea name="address" class="form-control" rows="2" required>{{ user.address or '' }}</textarea>
-</div>
+<label>Address</label>
+<textarea name="address" class="form-control">{{ profile.personal.address if profile.personal else '' }}</textarea>
 </div>
 
-<label>Career Objective *</label>
-<textarea name="career_objective" class="form-control"
-rows="3" required>{{ user.career_objective or '' }}</textarea>
+</div>
 </div>
 
 <!-- ================= PROFESSIONAL DETAILS ================= -->
 <div class="glass-card p-4 mb-4">
-<h5 class="fw-bold mb-3 text-gradient">🧾 Professional Details</h5>
+<h5 class="fw-bold mb-3">Professional Details</h5>
 
 <div class="row">
+
+<div class="col-md-6 mb-3">
+<label>Preferred Role</label>
+<input type="text" name="preferred_role" class="form-control"
+value="{{ profile.professional.preferred_role if profile.professional else '' }}">
+</div>
+
+<div class="col-md-6 mb-3">
+<label>Years of Experience</label>
+<input type="number" name="experience" class="form-control"
+value="{{ profile.professional.experience_years if profile.professional else '' }}">
+</div>
+
+<div class="col-md-6 mb-3">
+<label>Current Status</label>
+<select name="current_status" class="form-control">
+<option value="">Select</option>
+<option value="Student"
+{% if profile.professional and profile.professional.current_status == "Student" %}selected{% endif %}>Student</option>
+<option value="Fresher"
+{% if profile.professional and profile.professional.current_status == "Fresher" %}selected{% endif %}>Fresher</option>
+<option value="Working Professional"
+{% if profile.professional and profile.professional.current_status == "Working Professional" %}selected{% endif %}>Working Professional</option>
+</select>
+</div>
+
 <div class="col-md-6 mb-3">
 <label>LinkedIn</label>
 <input type="text" name="linkedin" class="form-control"
-value="{{ user.linkedin or '' }}">
+value="{{ profile.professional.linkedin if profile.professional else '' }}">
 </div>
 
 <div class="col-md-6 mb-3">
 <label>GitHub</label>
 <input type="text" name="github" class="form-control"
-value="{{ user.github or '' }}">
+value="{{ profile.professional.github if profile.professional else '' }}">
 </div>
 
 <div class="col-md-6 mb-3">
 <label>Portfolio</label>
 <input type="text" name="portfolio" class="form-control"
-value="{{ user.portfolio or '' }}">
+value="{{ profile.professional.portfolio if profile.professional else '' }}">
 </div>
 
-<div class="col-md-6 mb-3">
-<label>Preferred Role *</label>
-<input type="text" name="preferred_role" class="form-control"
-value="{{ user.preferred_role or '' }}" required>
+<div class="col-12 mb-3">
+<label>Career Objective</label>
+<textarea name="career_objective" class="form-control" rows="3">
+{{ profile.professional.career_objective if profile.professional else '' }}
+</textarea>
 </div>
 
-<div class="col-md-6 mb-3">
-<label>Years of Experience *</label>
-<input type="number" name="experience" class="form-control"
-value="{{ user.experience or '' }}" required>
 </div>
-
-<div class="col-md-6 mb-3">
-<label>Current Status *</label>
-<select name="current_status" class="form-control" required>
-<option value="">Select</option>
-<option value="Student" {% if user.current_status=="Student" %}selected{% endif %}>Student</option>
-<option value="Fresher" {% if user.current_status=="Fresher" %}selected{% endif %}>Fresher</option>
-<option value="Working Professional" {% if user.current_status=="Working Professional" %}selected{% endif %}>Working Professional</option>
-</select>
-</div>
-</div>
-</div>
-
-<!-- ================= WORK EXPERIENCE ================= -->
-<div class="glass-card p-4 mb-4">
-<h5 class="fw-bold mb-3 text-gradient">💼 Work Experience</h5>
-
-<div id="experience-section">
-{% if user.experience_details %}
-{% for exp in user.experience_details %}
-<div class="mb-3">
-<input type="text" name="company" class="form-control mb-2"
-value="{{ exp.company }}" placeholder="Company">
-<input type="text" name="role" class="form-control mb-2"
-value="{{ exp.role }}" placeholder="Role">
-<textarea name="exp_description" class="form-control"
-placeholder="Description">{{ exp.description }}</textarea>
-</div>
-{% endfor %}
-{% else %}
-<div class="mb-3">
-<input type="text" name="company" class="form-control mb-2" placeholder="Company">
-<input type="text" name="role" class="form-control mb-2" placeholder="Role">
-<textarea name="exp_description" class="form-control" placeholder="Description"></textarea>
-</div>
-{% endif %}
-</div>
-
-<button type="button" class="btn btn-outline-primary btn-sm"
-onclick="addExperience()">+ Add Experience</button>
 </div>
 
 <!-- ================= PROJECTS ================= -->
 <div class="glass-card p-4 mb-4">
-<h5 class="fw-bold mb-3 text-gradient">🚀 Projects</h5>
-
-<div id="project-section">
-{% if user.projects %}
-{% for proj in user.projects %}
-<input type="text" name="project"
-class="form-control mb-2"
-value="{{ proj }}">
-{% endfor %}
-{% else %}
-<input type="text" name="project"
-class="form-control mb-2"
-placeholder="Project Title + Tech Used">
-{% endif %}
-</div>
-
-<button type="button" class="btn btn-outline-primary btn-sm"
-onclick="addProject()">+ Add Project</button>
-</div>
+    <h5 class="fw-bold mb-3">Projects</h5>
+    
+    <div id="project-container">
+    
+    {% if profile.projects %}
+        {% for proj in profile.projects %}
+            <div class="project-item mb-3 border p-3 rounded">
+                <input type="text" name="project_title"
+                       class="form-control mb-2"
+                       value="{{ proj.title }}"
+                       placeholder="Project Title">
+    
+                <textarea name="project_description"
+                          class="form-control"
+                          placeholder="Project Description">{{ proj.description }}</textarea>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="project-item mb-3 border p-3 rounded">
+            <input type="text" name="project_title"
+                   class="form-control mb-2"
+                   placeholder="Project Title">
+    
+            <textarea name="project_description"
+                      class="form-control"
+                      placeholder="Project Description"></textarea>
+        </div>
+    {% endif %}
+    
+    </div>
+    
+    <button type="button" class="btn btn-outline-primary btn-sm"
+            onclick="addProject()">+ Add Project</button>
+    </div>
+    
 
 <!-- ================= CERTIFICATIONS ================= -->
 <div class="glass-card p-4 mb-4">
-<h5 class="fw-bold mb-3 text-gradient">📜 Certifications</h5>
-
-<div id="cert-section">
-{% if user.certifications %}
-{% for cert in user.certifications %}
-<input type="text" name="certification"
-class="form-control mb-2"
-value="{{ cert }}">
-{% endfor %}
-{% else %}
-<input type="text" name="certification"
-class="form-control mb-2"
-placeholder="Certification Name">
-{% endif %}
-</div>
-
-<button type="button" class="btn btn-outline-primary btn-sm"
-onclick="addCert()">+ Add Certification</button>
-</div>
+    <h5 class="fw-bold mb-3">Certifications</h5>
+    
+    <div id="cert-container">
+    
+    {% if profile.certifications %}
+        {% for cert in profile.certifications %}
+            <input type="text" name="certification"
+                   class="form-control mb-2"
+                   value="{{ cert }}">
+        {% endfor %}
+    {% else %}
+        <input type="text" name="certification"
+               class="form-control mb-2"
+               placeholder="Certification">
+    {% endif %}
+    
+    </div>
+    
+    <button type="button" class="btn btn-outline-primary btn-sm"
+            onclick="addCertification()">+ Add Certification</button>
+    </div>
+    
 
 <!-- ================= ACHIEVEMENTS ================= -->
 <div class="glass-card p-4 mb-4">
-<h5 class="fw-bold mb-3 text-gradient">🏆 Achievements</h5>
-
-<div id="achievement-section">
-{% if user.achievements %}
-{% for ach in user.achievements %}
-<input type="text" name="achievement"
-class="form-control mb-2"
-value="{{ ach }}">
-{% endfor %}
-{% else %}
-<input type="text" name="achievement"
-class="form-control mb-2"
-placeholder="Achievement">
-{% endif %}
-</div>
-
-<button type="button" class="btn btn-outline-primary btn-sm"
-onclick="addAchievement()">+ Add Achievement</button>
-</div>
-
-<!-- ================= RESUME ================= -->
-<div class="glass-card p-4 mb-4">
-<h5 class="fw-bold mb-3 text-gradient">📄 Resume Upload</h5>
-
-{% if user.resume %}
-<div class="alert alert-success">
-Resume Uploaded: <strong>{{ user.resume }}</strong>
-</div>
-<a href="{{ url_for('download_resume') }}"
-class="btn btn-outline-primary btn-sm mb-3">
-Download Resume
-</a>
-<label>Replace Resume (PDF)</label>
-<input type="file" name="resume"
-class="form-control" accept=".pdf">
-{% else %}
-<div class="alert alert-warning">No resume uploaded yet.</div>
-<input type="file" name="resume"
-class="form-control" accept=".pdf">
-{% endif %}
-</div>
+    <h5 class="fw-bold mb-3">Achievements</h5>
+    
+    <div id="achievement-container">
+    
+    {% if profile.achievements %}
+        {% for ach in profile.achievements %}
+            <input type="text" name="achievement"
+                   class="form-control mb-2"
+                   value="{{ ach }}">
+        {% endfor %}
+    {% else %}
+        <input type="text" name="achievement"
+               class="form-control mb-2"
+               placeholder="Achievement">
+    {% endif %}
+    
+    </div>
+    
+    <button type="button" class="btn btn-outline-primary btn-sm"
+            onclick="addAchievement()">+ Add Achievement</button>
+    </div>
+    
 
 <button class="btn btn-primary w-100 mb-5">
-💾 Save Professional Profile
+Save Profile
 </button>
 
 </form>
+
+<script>
+    function addProject() {
+        const container = document.getElementById("project-container");
+    
+        const div = document.createElement("div");
+        div.classList.add("project-item", "mb-3", "border", "p-3", "rounded");
+    
+        div.innerHTML = `
+            <input type="text" name="project_title"
+                   class="form-control mb-2"
+                   placeholder="Project Title">
+    
+            <textarea name="project_description"
+                      class="form-control"
+                      placeholder="Project Description"></textarea>
+        `;
+    
+        container.appendChild(div);
+    }
+    
+    function addCertification() {
+        const container = document.getElementById("cert-container");
+    
+        const input = document.createElement("input");
+        input.type = "text";
+        input.name = "certification";
+        input.className = "form-control mb-2";
+        input.placeholder = "Certification";
+    
+        container.appendChild(input);
+    }
+    
+    function addAchievement() {
+        const container = document.getElementById("achievement-container");
+    
+        const input = document.createElement("input");
+        input.type = "text";
+        input.name = "achievement";
+        input.className = "form-control mb-2";
+        input.placeholder = "Achievement";
+    
+        container.appendChild(input);
+    }
+    </script>
+    
 
 {% endblock %}
