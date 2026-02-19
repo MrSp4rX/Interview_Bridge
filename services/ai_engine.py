@@ -1,10 +1,17 @@
-import requests
+
+import os
+from dotenv import load_dotenv
+from typing import Optional
+
+from pydantic import BaseModel, Field
+from langchain_groq import ChatGroq
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 import json
 import re
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "llama3"  # or your installed model
 
+load_dotenv()
 
 def extract_json(text):
     try:
@@ -16,69 +23,78 @@ def extract_json(text):
     return None
 
 
-def fallback_feedback(answer):
-    return {
-        "grammar_score": 5,
-        "confidence_score": 5,
-        "improved_answer": "Could not generate improved answer."
-    }
+class FeedbackSchema(BaseModel):
+    grammar_score: int = Field(description="Score from 0 to 10")
+    confidence_score: int = Field(description="Score from 0 to 10")
+    technical_depth_score: Optional[int] = Field(
+        default=None,
+        description="Score from 0 to 10 if technical interview"
+    )
+    improved_answer: str = Field(description="Improved professional answer")
 
 
-def generate_feedback(answer, interview_type="hr", advanced=False):
+
+parser = JsonOutputParser(pydantic_object=FeedbackSchema)
+
+
+
+model = ChatGroq(
+    model="llama-3.1-8b-instant",
+    temperature=0.2,
+    max_tokens=500,
+    max_retries=2
+)
+
+
+
+def generate_feedback(answer: str, interview_type="hr", advanced=False):
+
+    format_instructions = parser.get_format_instructions()
 
     if advanced:
-        prompt = f"""
+        template = """
 You are an expert interview evaluator.
 
-Return ONLY valid JSON. Do not add any explanation.
+Evaluate the answer professionally.
 
-{{
-  "grammar_score": 0,
-  "confidence_score": 0,
-  "technical_depth_score": 0,
-  "improved_answer": ""
-}}
+Return structured JSON.
+
+{format_instructions}
 
 Answer:
 {answer}
 """
     else:
-        prompt = f"""
-Return ONLY valid JSON.
+        template = """
+Evaluate this HR interview answer professionally.
 
-{{
-  "grammar_score": 0,
-  "confidence_score": 0,
-  "improved_answer": ""
-}}
+Return structured JSON.
+
+{format_instructions}
 
 Answer:
 {answer}
 """
 
+    prompt = PromptTemplate(
+        template=template,
+        input_variables=["answer"],
+        partial_variables={"format_instructions": format_instructions},
+    )
+
+    chain = prompt | model | parser
+
     try:
-        response = requests.post(
-            OLLAMA_URL,
-            json={
-                "model": MODEL_NAME,
-                "prompt": prompt,
-                "stream": False,
-                "format": "json"   # 🔥 THIS IS CRITICAL
-            }
-        )
-
-        data = response.json()
-
-        raw_text = data.get("response", "")
-        print("RAW LLM TEXT:", raw_text)
-
-        parsed = extract_json(raw_text)
-
-        if parsed:
-            return parsed
-
-        return fallback_feedback(answer)
+        result = chain.invoke({"answer": answer})
+        return result
 
     except Exception as e:
         print("LLM ERROR:", e)
-        return fallback_feedback(answer)
+
+
+        return FeedbackSchema(
+            grammar_score=5,
+            confidence_score=5,
+            technical_depth_score=5 if advanced else None,
+            improved_answer="Could not generate improved answer."
+        ).dict()

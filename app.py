@@ -1,4 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, current_app, url_for, send_file
+from flask import Flask, render_template, request, session
+from flask_login import login_required, current_user
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from flask_bcrypt import Bcrypt
 from pymongo import MongoClient
@@ -22,6 +25,35 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 import io
+from langchain_groq import ChatGroq
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+#configure model 
+llm = ChatGroq(
+    model="llama-3.1-8b-instant",
+    temperature=0.2,
+    max_tokens=800,
+    max_retries=2
+)
+
+
+class QuizQuestion(BaseModel):
+    question: str = Field(description="Question text")
+    options: list[str] = Field(description="Four options")
+    answer: str = Field(description="Correct option letter A/B/C/D")
+
+class QuizSchema(BaseModel):
+    questions: list[QuizQuestion]
+
+parser = JsonOutputParser(pydantic_object=QuizSchema)
+
+
 
 
 app = Flask(__name__)
@@ -380,7 +412,6 @@ def improve_skill():
         {"_id": ObjectId(current_user.id)}
     )
 
-    # 🔒 Only premium users allowed
     if user.get("subscription") != "premium":
         return redirect("/upgrade")
 
@@ -396,37 +427,44 @@ def improve_skill():
 
             prompt = f"""
 Generate 10 multiple choice questions for {language}.
+
 Return ONLY valid JSON in this format:
 
 {{
   "questions": [
     {{
-      "question": "text",
+      "question": "Question text",
       "options": ["Option A", "Option B", "Option C", "Option D"],
-      "answer": "B"
+      "answer": "A"
     }}
   ]
 }}
+
+Rules:
+- Return ONLY raw JSON
+- No explanation
+- No markdown
+- No extra text
 """
 
-            import requests
+            try:
+                response = llm.invoke(prompt)
 
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": "llama3",
-                    "prompt": prompt,
-                    "stream": False
-                }
-            )
+                response_text = response.content.strip()
 
-            raw_text = response.json().get("response", "")
-            print("RAW LLM TEXT:", raw_text)
+                #  Remove markdown if model adds it
+                response_text = response_text.replace("```json", "")
+                response_text = response_text.replace("```", "")
+                response_text = response_text.strip()
 
-            quiz_data = extract_json(raw_text)
+                import json
+                data = json.loads(response_text)
 
-            if quiz_data:
-                questions = quiz_data.get("questions", [])
+                questions = data.get("questions", [])
+
+            except Exception as e:
+                print("Groq LLM Error:", str(e))
+                questions = []
 
         # ================= Submit Quiz =================
         elif "submit_quiz" in request.form:
@@ -470,7 +508,7 @@ def dashboard():
     feedback = None
     limit_reached = False
 
-    # ✅ Use timezone aware datetime (fixes deprecation warning)
+    #  Use timezone aware datetime (fixes deprecation warning)
     one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     FREE_LIMIT = 20
 
@@ -494,7 +532,7 @@ def dashboard():
             answer = request.form["answer"]
             interview_type = request.form.get("interview_type", "hr")
 
-            # ✅ Premium users get advanced evaluation
+            #  Premium users get advanced evaluation
             advanced_mode = True if subscription == "premium" else False
 
             ai_response = generate_feedback(
@@ -503,7 +541,7 @@ def dashboard():
                 advanced=advanced_mode
             )
 
-            # ✅ Safety fallback if AI fails
+            # Safety fallback if AI fails
             if not ai_response or not isinstance(ai_response, dict):
                 ai_response = {}
 
@@ -606,7 +644,7 @@ def download_report():
 
     user = users_collection.find_one({"_id": ObjectId(current_user.id)})
 
-    # 🔒 Allow only premium users
+    # Allow only premium users
     if user.get("subscription") != "premium":
         return redirect("/usage")
 
@@ -743,16 +781,144 @@ def usage():
         subscription=user_data.get("subscription", "free")
     )
 
-@app.route("/chat-interview")
+
+SYSTEM_PROMPT = """
+You are a highly experienced HR interviewer with 15 years of experience.
+You are strict, analytical, and emotionally intelligent.
+
+Rules:
+- Ask one question at a time.
+- If the candidate avoids answering, press them politely but firmly.
+- Analyze confidence, clarity, and depth.
+- Ask follow-up questions based on their response.
+- Maintain a professional but slightly intimidating tone.
+- When the user types 'exit', give final evaluation.
+- Final evaluation must include:
+    - Score out of 10
+    - Strengths
+    - Weaknesses
+    - Improvement suggestions
+"""
+
+
+# ---------------- Route ----------------
+@app.route("/chat-interview", methods=["GET", "POST"])
 @login_required
 def chat_interview():
-    return render_template("chat_interview.html")
+    interview_type = request.args.get("type", "hr")
+    reset = request.args.get("reset", None)
+
+    # ---------------- Handle Start Over ----------------
+    if reset:
+        session.pop("chat_history", None)
+        return redirect(url_for("chat_interview", type=interview_type))
+
+    # ---------------- Initialize session ----------------
+    if "chat_history" not in session:
+        session["chat_history"] = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    raw_history = session["chat_history"]
+    chat_history = []
+
+    # ---------------- Convert session dicts to LangChain messages ----------------
+    for msg in raw_history:
+        if msg["role"] == "system":
+            chat_history.append(SystemMessage(content=msg["content"]))
+        elif msg["role"] == "human":
+            chat_history.append(HumanMessage(content=msg["content"]))
+        elif msg["role"] == "ai":
+            chat_history.append(AIMessage(content=msg["content"]))
+
+    # ---------------- Handle user POST message ----------------
+    if request.method == "POST":
+        user_text = request.form.get("user_message", "").strip()
+        if user_text:
+            if user_text.lower() == "exit":
+                chat_history.append(HumanMessage(content="The candidate has ended the interview. Provide final evaluation."))
+                response = llm.invoke(chat_history)
+                chat_history.append(AIMessage(content=response.content))
+            else:
+                chat_history.append(HumanMessage(content=user_text))
+                response = llm.invoke(chat_history)
+                chat_history.append(AIMessage(content=response.content))
+
+            # Save back as JSON-serializable dicts
+            session["chat_history"] = [
+                {"role": "system" if isinstance(m, SystemMessage) else "human" if isinstance(m, HumanMessage) else "ai",
+                 "content": m.content}
+                for m in chat_history
+            ]
+
+    # ---------------- Prepare for frontend display ----------------
+    display_history = [
+        {"role": "HR-Donald" if isinstance(m, AIMessage) else "You", "content": m.content}
+        for m in chat_history if not isinstance(m, SystemMessage)
+    ]
+
+    return render_template(
+        "chat_interview.html",
+        chat_history=display_history,
+        interview_type=interview_type
+    )
 
 
+# ------------------- Voice Interview Page -------------------
 @app.route("/voice-interview")
 @login_required
 def voice_interview():
+    # Initialize session chat history if not exists
+    if "voice_chat_history" not in session:
+        session["voice_chat_history"] = [
+            {"role": "system", "content": SYSTEM_PROMPT}
+        ]
     return render_template("voice_interview.html")
+
+
+# ------------------- AI Response Endpoint -------------------
+@app.route("/voice-interview", methods=["POST"])
+@login_required
+def voice_interview_post():
+    user_text = request.json.get("user_text", "").strip()
+    if not user_text:
+        return jsonify({"ai_reply": "Please say something first."})
+
+    # Load chat history from session
+    raw_history = session.get("voice_chat_history", [])
+    chat_history = []
+
+    for msg in raw_history:
+        if msg["role"] == "system":
+            chat_history.append(SystemMessage(content=msg["content"]))
+        elif msg["role"] == "human":
+            chat_history.append(HumanMessage(content=msg["content"]))
+        elif msg["role"] == "ai":
+            chat_history.append(AIMessage(content=msg["content"]))
+
+    # Handle exit
+    if user_text.lower() == "exit":
+        chat_history.append(HumanMessage(content="The candidate has ended the interview. Provide final evaluation."))
+        response = llm.invoke(chat_history)
+        chat_history.append(AIMessage(content=response.content))
+
+        # Clear session after final evaluation
+        session.pop("voice_chat_history", None)
+        return jsonify({"ai_reply": response.content})
+
+    # Normal flow
+    chat_history.append(HumanMessage(content=user_text))
+    response = llm.invoke(chat_history)
+    chat_history.append(AIMessage(content=response.content))
+
+    # Save updated history back to session (JSON serializable)
+    session["voice_chat_history"] = [
+        {"role": "system" if isinstance(m, SystemMessage)
+                 else "human" if isinstance(m, HumanMessage)
+                 else "ai",
+         "content": m.content}
+        for m in chat_history
+    ]
+
+    return jsonify({"ai_reply": response.content})
 
 
 @app.route("/upgrade")

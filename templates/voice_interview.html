@@ -1,21 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h3 class="fw-bold mb-4">🎙️ AI Voice Mock Interview</h3>
+<h3 class="fw-bold mb-4">🎙️ AI Voice Mock Interview (Live)</h3>
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
 
         <div class="alert alert-info">
-            Click "Start Recording" and answer the question verbally.
+            Click "Start Recording" and answer verbally. AI will respond in text and voice.
         </div>
 
-        <!-- Current Question -->
-        <div class="mb-3">
-            <strong>AI Interviewer:</strong>
-            <p class="mt-2">
-                {{ question or "Tell me about yourself." }}
-            </p>
+        <!-- Chat Box -->
+        <div class="border rounded p-3 mb-3"
+             style="height:400px; overflow-y:auto; background:#f8f9fa;"
+             id="chatBox">
+            <div id="conversation"></div>
         </div>
 
         <!-- Voice Controls -->
@@ -23,49 +22,79 @@
             <button onclick="startRecording()" class="btn btn-primary me-2">
                 🎤 Start Recording
             </button>
-
-            <button onclick="stopRecording()" class="btn btn-danger">
+            <button onclick="stopRecording()" class="btn btn-danger me-2">
                 ⏹ Stop
             </button>
-        </div>
-
-        <!-- Transcript Area -->
-        <form method="POST">
-            <textarea name="transcript"
-                      id="transcript"
-                      class="form-control mb-3"
-                      rows="5"
-                      placeholder="Your voice transcript will appear here..."
-                      required></textarea>
-
-            <button class="btn btn-success w-100">
-                Submit Answer
+            <button onclick="resetConversation()" class="btn btn-warning">
+                🔄 Restart
             </button>
-        </form>
+        </div>
 
     </div>
 </div>
 
 <script>
 let recognition;
+let chatBox = document.getElementById("conversation");
 
+// Load previous session messages if any
+window.onload = function() {
+    // Optional: fetch previous session messages from backend if you implement
+    addMessage("AI", "Hello! Let’s begin your mock interview. Tell me about yourself.");
+}
+
+// Start recording
 function startRecording() {
-    recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = 'en-US';
     recognition.continuous = false;
 
     recognition.onresult = function(event) {
-        document.getElementById("transcript").value =
-            event.results[0][0].transcript;
+        const transcript = event.results[0][0].transcript;
+        addMessage("You", transcript);
+        sendToAI(transcript);
     };
 
     recognition.start();
 }
 
+// Stop recording
 function stopRecording() {
-    if (recognition) {
-        recognition.stop();
-    }
+    if (recognition) recognition.stop();
+}
+
+// Reset conversation
+function resetConversation() {
+    chatBox.innerHTML = "";
+    addMessage("AI", "Hello! Let’s begin your mock interview. Tell me about yourself.");
+
+    // Clear session on backend (optional)
+    fetch("/voice-interview/reset", {method: "POST"});
+}
+
+// Add message to chat box
+function addMessage(role, text) {
+    const div = document.createElement("div");
+    div.className = "mb-2";
+    div.innerHTML = `<strong>${role}:</strong> ${text}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Send transcript to backend AI
+async function sendToAI(userText) {
+    const response = await fetch("/voice-interview", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({user_text: userText})
+    });
+
+    const data = await response.json();
+    addMessage("AI", data.ai_reply);
+
+    // Text-to-Speech
+    const utter = new SpeechSynthesisUtterance(data.ai_reply);
+    speechSynthesis.speak(utter);
 }
 </script>
 
